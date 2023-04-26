@@ -4,13 +4,25 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
+	"os"
+	"strconv"
 
-	"github.com/kubearmor/kubearmor-client/install"
+	"github.com/accuknox/accuknox-cli/install"
+	"github.com/accuknox/accuknox-cli/utils"
+	pb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/license"
 	"github.com/spf13/cobra"
+	"google.golang.org/grpc"
 )
 
-var installOptions install.Options
+var (
+	installOptions install.Options
+	key            string
+	user           string
+)
+var matchLabels = map[string]string{"app": "discovery-engine"}
+var port int64 = 9089
 
 // installCmd represents the get command
 var installCmd = &cobra.Command{
@@ -28,9 +40,54 @@ var installCmd = &cobra.Command{
 		return nil
 	},
 }
+var licenseCmd = &cobra.Command{
+	Use:   "license",
+	Short: "install license",
+	Long:  `install license with flags key and user`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		gRPC := ""
+		targetSvc := "discovery-engine"
+
+		if val, ok := os.LookupEnv("DISCOVERY_SERVICE"); ok {
+			gRPC = val
+		} else {
+			pf, err := utils.InitiatePortForward(client, port, port, matchLabels, targetSvc)
+			if err != nil {
+				return err
+			}
+			gRPC = "localhost:" + strconv.FormatInt(pf.LocalPort, 10)
+		}
+
+		conn, err := grpc.Dial(gRPC, grpc.WithInsecure())
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		client := pb.NewLicenseClient(conn)
+
+		req := &pb.LicenseInstallRequest{
+			Key:    key,
+			UserId: user,
+		}
+		_, err = client.InstallLicense(context.Background(), req)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("License installed successfully for discovery engine.\n")
+
+		return nil
+	},
+}
 
 func init() {
 	rootCmd.AddCommand(installCmd)
+	installCmd.AddCommand(licenseCmd)
+
+	//license
+	licenseCmd.Flags().StringVar(&key, "key", "", "license key for installing license (required)")
+	licenseCmd.Flags().StringVar(&user, "user", "", "user id for installing license")
+	licenseCmd.MarkFlagRequired("key")
 
 	installCmd.Flags().StringVarP(&installOptions.Namespace, "namespace", "n", "kube-system", "Namespace for resources")
 	installCmd.Flags().StringVarP(&installOptions.KubearmorImage, "image", "i", "kubearmor/kubearmor:stable", "Kubearmor daemonset image to use")
