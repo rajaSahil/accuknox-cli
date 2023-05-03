@@ -23,7 +23,7 @@ jobs:
         run: kubectl apply -f ./tests/recommend/res/wordpress-mysql-deployment.yaml
       - name: Wait for pods
         run: kubectl -n wordpress-mysql wait --for=condition=ready pod --all --timeout=5m
-      - name: Test kArmor recommend using Ginkgo
+      - name: Test accuknox-cli recommend using Ginkgo
         run: |
           make install
           go install -mod=mod github.com/onsi/ginkgo/v2/ginkgo

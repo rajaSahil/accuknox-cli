@@ -27,12 +27,12 @@ var TelMutex sync.RWMutex
 
 // GetLogs to fetch logs
 func GetLogs(grpc string) error {
-	err := KarmorProfileStart("system", grpc)
+	err := AcliProfileStart("system", grpc)
 	if err != nil {
 		return err
 	}
 	if eventChan == nil {
-		log.Error("event channel not set. Did you call KarmorQueueLog()?")
+		log.Error("event channel not set. Did you call AliQueueLog()?")
 		return errors.New("event channel not set")
 	}
 
@@ -55,8 +55,8 @@ func GetLogs(grpc string) error {
 	return err
 }
 
-// KarmorProfileStart starts observer
-func KarmorProfileStart(logFilter string, grpc string) error {
+// AcliProfileStart starts observer
+func AcliProfileStart(logFilter string, grpc string) error {
 	if eventChan == nil {
 		eventChan = make(chan klog.EventInfo)
 	}

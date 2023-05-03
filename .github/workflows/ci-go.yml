@@ -17,7 +17,7 @@ jobs:
         with:
           go-version: v1.18
 
-      - name: Build karmor
+      - name: Build accuknox-cli
         run: make
 
   go-fmt:

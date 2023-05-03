@@ -15,7 +15,7 @@ import (
 	kg "github.com/kubearmor/KubeArmor/KubeArmor/log"
 )
 
-// LabelOptions are optional configuration for kArmor vm policy
+// LabelOptions are optional configuration for accuknox-cli vm policy
 type LabelOptions struct {
 	VMName   string
 	VMLabels string

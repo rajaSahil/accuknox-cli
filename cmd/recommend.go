@@ -26,7 +26,7 @@ var recommendCmd = &cobra.Command{
 var updateCmd = &cobra.Command{
 	Use:   "update",
 	Short: "Updates policy-template cache",
-	Long:  "Updates the local cache of policy-templates ($HOME/.cache/karmor)",
+	Long:  "Updates the local cache of policy-templates ($HOME/.cache/accuknox-cli)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 
 		if _, err := recommend.DownloadAndUnzipRelease(); err != nil {

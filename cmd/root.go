@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2021 Authors of KubeArmor
 
-// Package cmd is the collection of all the subcommands available in kArmor while providing relevant options for the same
+// Package cmd is the collection of all the subcommands available in accuknox-cli while providing relevant options for the same
 package cmd
 
 import (
-	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/accuknox/accuknox-cli/cmd/get"
+	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )

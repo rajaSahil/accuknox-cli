@@ -11,14 +11,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-// Karmorprobe is the identifier for the daemonset we use to probe into k8s cluster
-var Karmorprobe = "karmor-probe"
+// Acliprobe is the identifier for the daemonset we use to probe into k8s cluster
+var Acliprobe = "accuknox-cli-probe"
 
 // GenerateDaemonSet Function
 func GenerateDaemonSet(namespace string, krnhdr bool) *appsv1.DaemonSet {
 
 	var label = map[string]string{
-		"kubearmor-app": Karmorprobe,
+		"kubearmor-app": Acliprobe,
 	}
 	var privileged = bool(true)
 	var terminationGracePeriodSeconds = int64(30)
@@ -84,7 +84,7 @@ func GenerateDaemonSet(namespace string, krnhdr bool) *appsv1.DaemonSet {
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      Karmorprobe,
+			Name:      Acliprobe,
 			Labels:    label,
 			Namespace: namespace,
 		},
@@ -110,7 +110,7 @@ func GenerateDaemonSet(namespace string, krnhdr bool) *appsv1.DaemonSet {
 					RestartPolicy: "Always",
 					Containers: []corev1.Container{
 						{
-							Name:            Karmorprobe,
+							Name:            Acliprobe,
 							Image:           "alpine",
 							ImagePullPolicy: "Always",
 							SecurityContext: &corev1.SecurityContext{

@@ -70,7 +70,7 @@ var licenseCmd = &cobra.Command{
 			Key:    key,
 			UserId: user,
 		}
-		_ , err = client.InstallLicense(context.Background(), req)
+		_, err = client.InstallLicense(context.Background(), req)
 		if err != nil {
 			return err
 		}
@@ -87,7 +87,10 @@ func init() {
 	//license
 	licenseCmd.Flags().StringVar(&key, "key", "", "license key for installing license (required)")
 	licenseCmd.Flags().StringVar(&user, "user", "", "user id for installing license")
-	licenseCmd.MarkFlagRequired("key")
+	err := licenseCmd.MarkFlagRequired("key")
+	if err != nil {
+		fmt.Printf("Required flag empty : %s", err)
+	}
 
 	installCmd.Flags().StringVarP(&installOptions.Namespace, "namespace", "n", "kube-system", "Namespace for resources")
 	installCmd.Flags().StringVarP(&installOptions.KubearmorImage, "image", "i", "kubearmor/kubearmor:stable", "Kubearmor daemonset image to use")
