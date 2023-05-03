@@ -18,7 +18,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ScriptOptions for karmor vm getscript
+// ScriptOptions for accuknox-cli vm getscript
 type ScriptOptions struct {
 	Port   string
 	VMName string

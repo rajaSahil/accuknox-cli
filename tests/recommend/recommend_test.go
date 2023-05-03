@@ -62,7 +62,7 @@ func compareData(file1, file2 string) bool {
 	return true
 }
 
-var _ = Describe("karmor", func() {
+var _ = Describe("accuknox-cli", func() {
 
 	BeforeEach(func() {
 		testOptions.OutDir = "out"
@@ -81,11 +81,11 @@ var _ = Describe("karmor", func() {
 
 		Context("when called with `update` command", func() {
 
-			It("should fetch the latest policy-template release and modify the rule under ~/.cache/karmor/", func() {
+			It("should fetch the latest policy-template release and modify the rule under ~/.cache/accuknox-cli/", func() {
 				//os.MkdirAll(testOptions.OutDir, 0777)
 				_, err := recommend.DownloadAndUnzipRelease()
 				Expect(err).To(BeNil())
-				files, err := os.ReadDir(fmt.Sprintf("%s/.cache/karmor", os.Getenv("HOME")))
+				files, err := os.ReadDir(fmt.Sprintf("%s/.cache/accuknox-cli", os.Getenv("HOME")))
 				Expect(err).To(BeNil())
 				Expect(len(files)).To(BeNumerically(">=", 1))
 				//os.RemoveAll(testOptions.OutDir)

@@ -28,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// Options for karmor install
+// Options for accuknox-cli install
 type Options struct {
 	Namespace      string
 	InitImage      string
@@ -170,7 +170,7 @@ func checkTerminatingPods(c *k8s.Client) int {
 	return 0
 }
 
-// K8sInstaller for karmor install
+// K8sInstaller for accuknox-cli install
 func K8sInstaller(c *k8s.Client, o Options) error {
 	animation = o.Animation
 	var env string
@@ -519,7 +519,7 @@ func removeAnnotations(c *k8s.Client) {
 	}
 }
 
-// K8sUninstaller for karmor uninstall
+// K8sUninstaller for accuknox-cli uninstall
 func K8sUninstaller(c *k8s.Client, o Options) error {
 	animation = o.Animation
 	fmt.Print("❌   Mutation Admission Registration ...\n")

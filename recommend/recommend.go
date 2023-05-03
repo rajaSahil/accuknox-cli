@@ -27,7 +27,7 @@ var KyvernoPolicy = "KyvernoPolicy"
 // KubeArmorPolicy is alias for kubearmor policy
 var KubeArmorPolicy = "KubeArmorPolicy"
 
-// Options for karmor recommend
+// Options for accuknox-cli recommend
 type Options struct {
 	Images     []string
 	Labels     []string
@@ -96,7 +96,7 @@ func finalReport() {
 	fmt.Println(string(data))
 }
 
-// Recommend handler for karmor cli tool
+// Recommend handler for accuknox-cli tool
 func Recommend(c *k8s.Client, o Options) error {
 	deployments := []Deployment{}
 	var err error
@@ -173,7 +173,7 @@ func handleDeployment(dp Deployment, c *k8s.Client) error {
 
 	var err error
 	for _, img := range dp.Images {
-		tempDir, err = os.MkdirTemp("", "karmor")
+		tempDir, err = os.MkdirTemp("", "accuknox-cli")
 		if err != nil {
 			log.WithError(err).Error("could not create temp dir")
 		}

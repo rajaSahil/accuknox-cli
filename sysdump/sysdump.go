@@ -37,7 +37,7 @@ type Options struct {
 func Collect(c *k8s.Client, o Options) error {
 	var errs errgroup.Group
 
-	d, err := os.MkdirTemp("", "karmor-sysdump")
+	d, err := os.MkdirTemp("", "accuknox-cli-sysdump")
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func Collect(c *k8s.Client, o Options) error {
 
 	sysdumpFile := ""
 	if o.Filename == "" {
-		sysdumpFile = "karmor-sysdump-" + strings.Replace(time.Now().Format(time.UnixDate), ":", "_", -1) + ".zip"
+		sysdumpFile = "accuknox-cli-sysdump-" + strings.Replace(time.Now().Format(time.UnixDate), ":", "_", -1) + ".zip"
 	} else {
 		sysdumpFile = o.Filename
 	}

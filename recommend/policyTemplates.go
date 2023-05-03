@@ -26,7 +26,7 @@ const (
 	org   = "kubearmor"
 	repo  = "policy-templates"
 	url   = "https://github.com/kubearmor/policy-templates/archive/refs/tags/"
-	cache = ".cache/karmor/"
+	cache = ".cache/accuknox-cli/"
 )
 
 // CurrentVersion stores the current version of policy-template

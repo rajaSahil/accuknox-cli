@@ -49,7 +49,7 @@ type Options struct {
 	Full      bool
 }
 
-// K8sInstaller for karmor install
+// K8sInstaller for accuknox-cli install
 func probeDaemonInstaller(c *k8s.Client, o Options, krnhdr bool) error {
 	daemonset := deployment.GenerateDaemonSet(o.Namespace, krnhdr)
 	if _, err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Create(context.Background(), daemonset, metav1.CreateOptions{}); err != nil {
@@ -62,17 +62,17 @@ func probeDaemonInstaller(c *k8s.Client, o Options, krnhdr bool) error {
 }
 
 func probeDaemonUninstaller(c *k8s.Client, o Options) error {
-	if err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Delete(context.Background(), deployment.Karmorprobe, metav1.DeleteOptions{}); err != nil {
+	if err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Delete(context.Background(), deployment.Acliprobe, metav1.DeleteOptions{}); err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
-		fmt.Print("Karmor probe DaemonSet not found ...\n")
+		fmt.Print("accuknox-cli probe DaemonSet not found ...\n")
 	}
 
 	return nil
 }
 
-// PrintProbeResult prints the result for the  host and k8s probing kArmor does to check compatibility with KubeArmor
+// PrintProbeResult prints the result for the  host and k8s probing accuknox-cli does to check compatibility with KubeArmor
 func PrintProbeResult(c *k8s.Client, o Options) error {
 	if runtime.GOOS != "linux" {
 		env := install.AutoDetectEnvironment(c)
@@ -117,14 +117,14 @@ func PrintProbeResult(c *k8s.Client, o Options) error {
 			select {
 			case <-timeout:
 				color.Red("Failed to deploy probe daemonset ...")
-				color.Yellow("Cleaning Up Karmor Probe DaemonSet ...\n")
+				color.Yellow("Cleaning Up accuknox-cli Probe DaemonSet ...\n")
 				if err := probeDaemonUninstaller(c, o); err != nil {
 					return err
 				}
 				return nil
 			default:
 				time.Sleep(500 * time.Millisecond)
-				pods, _ := c.K8sClientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: "kubearmor-app=" + deployment.Karmorprobe, FieldSelector: "status.phase!=Running"})
+				pods, _ := c.K8sClientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: "kubearmor-app=" + deployment.Acliprobe, FieldSelector: "status.phase!=Running"})
 				if len(pods.Items) == 0 {
 					break checkprobe
 				}
@@ -146,7 +146,7 @@ func PrintProbeResult(c *k8s.Client, o Options) error {
 			}
 		}
 		probeNode(c, o)
-		color.Yellow("\nDeleting Karmor Probe DaemonSet ...\n")
+		color.Yellow("\nDeleting accuknox-cli Probe DaemonSet ...\n")
 		if err := probeDaemonUninstaller(c, o); err != nil {
 			return err
 		}
@@ -270,7 +270,7 @@ func findFileInDir(c *k8s.Client, podname, namespace, containername string, cmd 
 // Check for BTF Information or Kernel Headers Availability
 func checkNodeKernelHeaderPresent(c *k8s.Client, o Options, nodeName string, kernelVersion string) bool {
 	pods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: "kubearmor-app=" + deployment.Karmorprobe,
+		LabelSelector: "kubearmor-app=" + deployment.Acliprobe,
 		FieldSelector: "spec.nodeName=" + nodeName,
 	})
 	if err != nil {
@@ -308,7 +308,7 @@ func checkHostAuditSupport() {
 func getNodeLsmSupport(c *k8s.Client, o Options, nodeName string) (string, error) {
 	srcPath := "/sys/kernel/security/lsm"
 	pods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: "kubearmor-app=karmor-probe",
+		LabelSelector: "kubearmor-app=accuknox-cli-probe",
 		FieldSelector: "spec.nodeName=" + nodeName,
 	})
 	if err != nil {
@@ -465,7 +465,7 @@ func probeRunningKubeArmorNodes(c *k8s.Client, o Options) error {
 }
 
 func readDataFromKubeArmor(c *k8s.Client, o Options, nodeName string) error {
-	srcPath := "/tmp/karmorProbeData.cfg"
+	srcPath := "/tmp/accuknox-cliProbeData.cfg"
 	pods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: "kubearmor-app=kubearmor",
 		FieldSelector: "spec.nodeName=" + nodeName,
@@ -552,7 +552,7 @@ func isSystemdMode() bool {
 }
 
 func probeSystemdMode() error {
-	jsonFile, err := os.Open("/tmp/karmorProbeData.cfg")
+	jsonFile, err := os.Open("/tmp/accuknox-cliProbeData.cfg")
 	if err != nil {
 		log.Println(err)
 		return err

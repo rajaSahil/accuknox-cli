@@ -65,12 +65,12 @@ execute() {
 }
 get_binaries() {
   case "$PLATFORM" in
-    darwin/amd64) BINARIES="karmor" ;;
-    darwin/arm64) BINARIES="karmor" ;;
-    linux/amd64) BINARIES="karmor" ;;
-    linux/arm64) BINARIES="karmor" ;;
-    windows/amd64) BINARIES="karmor" ;;
-    windows/arm64) BINARIES="karmor" ;;
+    darwin/amd64) BINARIES="accuknox-cli" ;;
+    darwin/arm64) BINARIES="accuknox-cli" ;;
+    linux/amd64) BINARIES="accuknox-cli" ;;
+    linux/arm64) BINARIES="accuknox-cli" ;;
+    windows/amd64) BINARIES="accuknox-cli" ;;
+    windows/arm64) BINARIES="accuknox-cli" ;;
     *)
       log_crit "platform $PLATFORM is not supported.  Make sure this script is up-to-date and file request at https://github.com/${PREFIX}/issues/new"
       exit 1
@@ -335,10 +335,10 @@ End of functions from https://github.com/client9/shlib
 ------------------------------------------------------------------------
 EOF
 
-PROJECT_NAME="karmor"
+PROJECT_NAME="accuknox-cli"
 OWNER=kubearmor
 REPO="kubearmor-client"
-BINARY=karmor
+BINARY=accuknox-cli
 FORMAT=tar.gz
 OS=$(uname_os)
 ARCH=$(uname_arch)

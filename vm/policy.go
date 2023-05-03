@@ -35,7 +35,7 @@ const (
 	CiliumClusterwideNetworkPolicy = "CiliumClusterwideNetworkPolicy"
 )
 
-// PolicyOptions are optional configuration for kArmor vm policy
+// PolicyOptions are optional configuration for accuknox-cli vm policy
 type PolicyOptions struct {
 	GRPC string
 }

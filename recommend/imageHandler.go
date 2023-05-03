@@ -32,7 +32,7 @@ import (
 )
 
 var cli *client.Client      // docker client
-var tempDir string          // temporary directory used by karmor to save image etc
+var tempDir string          // temporary directory used by accuknox-cli to save image etc
 var dockerConfigPath string // stores path of docker config.json
 
 // ImageInfo contains image information

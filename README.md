@@ -1,34 +1,32 @@
-# karmor
+# accuknox-cli
 
-**karmor** is a client tool to help manage [KubeArmor](https://github.com/kubearmor/KubeArmor).
+**accuknox-cli** is a client tool to help manage [KubeArmor](https://github.com/kubearmor/KubeArmor) and [Discovery Engine](https://github.com/accuknox/discovery-engine).
 
 ## Installation
 
-```
-curl -sfL http://get.kubearmor.io/ | sudo sh -s -- -b /usr/local/bin
-```
-
 ### Installing from Source 
 
-Build karmor from source if you want to test the latest (pre-release) karmor version.
+Build accuknox-cli from source if you want to test the latest (pre-release) accuknox-cli version.
 
 ```
-git clone https://github.com/kubearmor/kubearmor-client.git
-cd kubearmor-client
+git clone https://github.com/accuknox/accuknox-cli.git
+cd accuknox-cli
 make install
 ```
 
 ## Usage
 
 ```
-CLI Utility to help manage KubeArmor
+CLI Utility to help manage KubeArmor and Discovery Engine
 
 KubeArmor is a container-aware runtime security enforcement system that
 restricts the behavior (such as process execution, file access, and networking
 operation) of containers at the system level.
 
+Discovery Engine discovers the security posture for your workloads and auto-discovers the policy-set required to put the workload in least-permissive mode. The engine leverages the rich visibility provided by KubeArmor and Cilium to auto discover the systems and network security posture.
+
 Usage:
-  karmor [command]
+  accuknox-cli [command]
 
 Available Commands:
   completion  Generate the autocompletion script for the specified shell
@@ -49,8 +47,8 @@ Available Commands:
 
 Flags:
       --context string      Name of the kubeconfig context to use
-  -h, --help                help for karmor
+  -h, --help                help for accuknox-cli
       --kubeconfig string   Path to the kubeconfig file to use
 
-Use "karmor [command] --help" for more information about a command.
+Use "accuknox-cli [command] --help" for more information about a command.
 ```

@@ -98,7 +98,7 @@ func doSelfUpdate(curver string) error {
 	fmt.Println("updating from " + latest.AssetURL)
 	if err := selfupdate.UpdateTo(latest.AssetURL, exe); err != nil {
 		if strings.Contains(err.Error(), "permission denied") {
-			color.Red("use [sudo karmor selfupdate]")
+			color.Red("use [sudo accuknox-cli selfupdate]")
 		}
 		return err
 	}
@@ -106,12 +106,12 @@ func doSelfUpdate(curver string) error {
 	return nil
 }
 
-// SelfUpdate handler for karmor cli tool
+// SelfUpdate handler for accuknox-cli cli tool
 func SelfUpdate(c *k8s.Client) error {
 	var ver = GitSummary
-	fmt.Printf("current karmor version %s\n", ver)
+	fmt.Printf("current accuknox-cli version %s\n", ver)
 	if !isValidVersion(ver) {
-		fmt.Println("version does not match the pattern. Maybe using a locally built karmor!")
+		fmt.Println("version does not match the pattern. Maybe using a locally built accuknox-cli!")
 		if !ConfirmUserAction("Do you want to update it?") {
 			return nil
 		}

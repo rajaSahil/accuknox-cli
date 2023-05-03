@@ -13,19 +13,19 @@ GIT_INFO := $(shell govvv -flags -pkg $(PKG))
 
 .PHONY: build
 build:
-	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "-w -s ${GIT_INFO}" -o karmor
+	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "-w -s ${GIT_INFO}" -o accuknox-cli
 
 .PHONY: debug
 debug:
-	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "${GIT_INFO}" -o karmor
+	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "${GIT_INFO}" -o accuknox-cli
 
 .PHONY: install
 install: build
-	install -m 0755 karmor $(DESTDIR)$(INSTALLDIR)
+	install -m 0755 accuknox-cli $(DESTDIR)$(INSTALLDIR)
 
 .PHONY: clean
 clean:
-	cd $(CURDIR); rm -f karmor
+	cd $(CURDIR); rm -f accuknox-cli
 
 .PHONY: test
 test:
