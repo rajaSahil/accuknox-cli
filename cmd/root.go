@@ -48,7 +48,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&k8s.KubeConfig, "kubeconfig", "", "Path to the kubeconfig file to use")
 	rootCmd.PersistentFlags().StringVar(&k8s.ContextName, "context", "", "Name of the kubeconfig context to use")
 	addSubCommandPalettes()
-
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

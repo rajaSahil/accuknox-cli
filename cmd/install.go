@@ -14,6 +14,7 @@ import (
 	pb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/license"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -58,7 +59,7 @@ var licenseCmd = &cobra.Command{
 			gRPC = "localhost:" + strconv.FormatInt(pf.LocalPort, 10)
 		}
 
-		conn, err := grpc.Dial(gRPC, grpc.WithInsecure())
+		conn, err := grpc.Dial(gRPC, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			return err
 		}
