@@ -5,7 +5,7 @@
 package cmd
 
 import (
-	"github.com/accuknox/accuknox-cli/cmd/get"
+	"github.com/accuknox/accuknox-cli/cmd/license"
 	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -41,7 +41,7 @@ operation) of containers at the system level.
 
 // adding all the commands with sub commands
 func addSubCommandPalettes() {
-	rootCmd.AddCommand(get.GetCmd)
+	rootCmd.AddCommand(license.LicenseCmd)
 }
 
 func init() {

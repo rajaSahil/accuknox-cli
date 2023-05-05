@@ -1,4 +1,4 @@
-package get
+package license
 
 import (
 	"fmt"
@@ -32,6 +32,6 @@ var uuidCmd = &cobra.Command{
 }
 
 func init() {
-	GetCmd.AddCommand(uuidCmd)
+	LicenseCmd.AddCommand(uuidCmd)
 
 }

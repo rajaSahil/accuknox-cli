@@ -1,4 +1,4 @@
-package get
+package license
 
 import (
 	"context"
@@ -12,13 +12,11 @@ import (
 	pb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/license"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
-var matchLabels = map[string]string{"app": "discovery-engine"}
-var port int64 = 9089
-
 var licenseStatusCmd = &cobra.Command{
-	Use:   "license-status",
+	Use:   "status",
 	Short: "get license status",
 	Long:  `get license status`,
 
@@ -43,12 +41,13 @@ var licenseStatusCmd = &cobra.Command{
 			gRPC = "localhost:" + strconv.FormatInt(pf.LocalPort, 10)
 		}
 
-		conn, err := grpc.Dial(gRPC, grpc.WithInsecure())
+		conn, err := grpc.Dial(gRPC, grpc.WithTransportCredentials(insecure.NewCredentials()))
 		if err != nil {
 			fmt.Printf("unable to dial to the target grpc: %s\n", err.Error())
 			return err
 		}
 		defer conn.Close()
+
 		licenseClient := pb.NewLicenseClient(conn)
 		req := &pb.LicenseStatusRequest{}
 		resp, err := licenseClient.GetLicenseStatus(context.Background(), req)
@@ -69,5 +68,5 @@ var licenseStatusCmd = &cobra.Command{
 }
 
 func init() {
-	GetCmd.AddCommand(licenseStatusCmd)
+	LicenseCmd.AddCommand(licenseStatusCmd)
 }
