@@ -4,17 +4,13 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"strconv"
+	"os/exec"
 
+	de "github.com/accuknox/accuknox-cli/discoveryengine"
 	"github.com/accuknox/accuknox-cli/install"
-	"github.com/accuknox/accuknox-cli/utils"
-	pb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/license"
 	"github.com/spf13/cobra"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 var (
@@ -22,8 +18,6 @@ var (
 	key            string
 	user           string
 )
-var matchLabels = map[string]string{"app": "discovery-engine"}
-var port int64 = 9089
 
 // installCmd represents the get command
 var installCmd = &cobra.Command{
@@ -31,6 +25,7 @@ var installCmd = &cobra.Command{
 	Short: "Install KubeArmor in a Kubernetes Cluster",
 	Long:  `Install KubeArmor in a Kubernetes Clusters`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		//kubearmor
 		installOptions.Animation = true
 		if err := installOptions.Env.CheckAndSetValidEnvironmentOption(cmd.Flag("env").Value.String()); err != nil {
 			return fmt.Errorf("error in checking environment option: %v", err)
@@ -38,60 +33,46 @@ var installCmd = &cobra.Command{
 		if err := install.K8sInstaller(client, installOptions); err != nil {
 			return err
 		}
-		return nil
-	},
-}
-var licenseCmd = &cobra.Command{
-	Use:   "license",
-	Short: "install license",
-	Long:  `install license with flags key and user`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		gRPC := ""
-		targetSvc := "discovery-engine"
 
-		if val, ok := os.LookupEnv("DISCOVERY_SERVICE"); ok {
-			gRPC = val
-		} else {
-			pf, err := utils.InitiatePortForward(client, port, port, matchLabels, targetSvc)
-			if err != nil {
-				return err
-			}
-			gRPC = "localhost:" + strconv.FormatInt(pf.LocalPort, 10)
-		}
-
-		conn, err := grpc.Dial(gRPC, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		//Discovery Engine
+		_, err := exec.LookPath("kubectl")
 		if err != nil {
+			fmt.Println("kubectl is not installed. Follow link to install kubectl : https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/")
 			return err
 		}
-		defer conn.Close()
 
-		client := pb.NewLicenseClient(conn)
+		command := "kubectl"
+		arg := []string{"apply", "-f", "https://raw.githubusercontent.com/accuknox/discovery-engine/dev/deployments/k8s/deployment.yaml"}
 
-		req := &pb.LicenseInstallRequest{
-			Key:    key,
-			UserId: user,
-		}
-		_, err = client.InstallLicense(context.Background(), req)
+		newCmd := exec.Command(command, arg...)
+
+		newCmd.Stdout = os.Stdout
+		newCmd.Stderr = os.Stderr
+
+		err = newCmd.Run()
 		if err != nil {
+			fmt.Printf("Failed to execute command: %v\n", err)
 			return err
 		}
-		fmt.Printf("License installed successfully for discovery engine.\n")
+		fmt.Println("🥳  Done Installing Discovery Engine")
 
-		return nil
+		de.CheckPods(client)
+
+		if user == "" || key == "" {
+			return nil
+		}
+
+		err = de.InstallLicense(client, key, user)
+		return err
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(installCmd)
-	installCmd.AddCommand(licenseCmd)
 
 	//license
-	licenseCmd.Flags().StringVar(&key, "key", "", "license key for installing license (required)")
-	licenseCmd.Flags().StringVar(&user, "user", "", "user id for installing license")
-	err := licenseCmd.MarkFlagRequired("key")
-	if err != nil {
-		fmt.Printf("Required flag empty : %s", err)
-	}
+	installCmd.Flags().StringVar(&key, "key", "", "license key for installing license (required)")
+	installCmd.Flags().StringVar(&user, "user", "", "user id for installing license")
 
 	installCmd.Flags().StringVarP(&installOptions.Namespace, "namespace", "n", "kube-system", "Namespace for resources")
 	installCmd.Flags().StringVarP(&installOptions.KubearmorImage, "image", "i", "kubearmor/kubearmor:stable", "Kubearmor daemonset image to use")
