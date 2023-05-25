@@ -13,19 +13,19 @@ GIT_INFO := $(shell govvv -flags -pkg $(PKG))
 
 .PHONY: build
 build:
-	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "-w -s ${GIT_INFO}" -o accuknox-cli
+	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "-w -s ${GIT_INFO}" -o accuknoxcli
 
 .PHONY: debug
 debug:
-	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "${GIT_INFO}" -o accuknox-cli
+	cd $(CURDIR); go mod tidy; CGO_ENABLED=0 go build -ldflags "${GIT_INFO}" -o accuknoxcli
 
 .PHONY: install
 install: build
-	install -m 0755 accuknox-cli $(DESTDIR)$(INSTALLDIR)
+	install -m 0755 accuknoxcli $(DESTDIR)$(INSTALLDIR)
 
 .PHONY: clean
 clean:
-	cd $(CURDIR); rm -f accuknox-cli
+	cd $(CURDIR); rm -f accuknoxcli
 
 .PHONY: test
 test:
