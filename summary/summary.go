@@ -9,13 +9,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/accuknox/accuknox-cli/utils"
 	opb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/observability"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
@@ -27,16 +29,17 @@ var port int64 = 9089
 
 // Options Structure
 type Options struct {
-	GRPC          string
-	Labels        string
-	Namespace     string
-	PodName       string
-	ClusterName   string
-	ContainerName string
-	Type          string
-	Output        string
-	RevDNSLookup  bool
-	Aggregation   bool
+	GRPC             string
+	Labels           string
+	Namespace        string
+	PodName          string
+	ClusterName      string
+	ContainerName    string
+	Type             string
+	Output           string
+	RevDNSLookup     bool
+	Aggregation      bool
+	BaselineFilePath string
 }
 
 // GetSummary on pods
@@ -131,15 +134,69 @@ func GetSummary(c *k8s.Client, o Options) ([]string, error) {
 
 // Summary - printing the summary output
 func Summary(c *k8s.Client, o Options) error {
-
+	var summ []SummaryData
 	summary, err := GetSummary(c, o)
+	summaryData := &SummaryData{}
 	if err != nil {
 		return err
 	}
 	for _, sum := range summary {
 		if o.Output == "json" {
-			fmt.Printf("%s", sum)
+			//fmt.Printf("%s", sum)
+			//summaryData += sum
+			err := json.Unmarshal([]byte(sum), &summaryData)
+			if err != nil {
+				return err
+			}
+			summ = append(summ, *summaryData)
 		}
 	}
+	su, _ := json.Marshal(summ)
+	file, _ := json.MarshalIndent(summ, "", " ")
+
+	_ = ioutil.WriteFile("/home/sahil/devsecops/test.json", file, 0644)
+	//fmt.Println(summ)
+	fmt.Println(su)
+	if o.BaselineFilePath != "" {
+		baselineSummaryData, err := readFromFile(o.BaselineFilePath)
+		if err != nil {
+			return err
+		}
+		file, _ := json.MarshalIndent(baselineSummaryData, "", " ")
+
+		_ = ioutil.WriteFile("/home/sahil/devsecops/test1.json", file, 0644)
+
+		fmt.Println(baselineSummaryData)
+	}
 	return nil
+}
+
+func readFromFile(filePath string) ([]SummaryData, error) {
+	jsonFile, err := os.Open(filePath)
+	// if we os.Open returns an error then handle it
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer func(jsonFile *os.File) {
+		err := jsonFile.Close()
+		if err != nil {
+
+		}
+	}(jsonFile)
+	byteValue, _ := ioutil.ReadAll(jsonFile)
+	s := json.NewDecoder(strings.NewReader(string(byteValue)))
+	var summaryList []SummaryData
+	for {
+		var sum SummaryData
+		err := s.Decode(&sum)
+		if err == io.EOF {
+			// all done
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		summaryList = append(summaryList, sum)
+	}
+	return summaryList, nil
 }

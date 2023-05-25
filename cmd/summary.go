@@ -36,4 +36,6 @@ func init() {
 	summaryCmd.Flags().StringVarP(&summaryOptions.Output, "output", "o", "", "Export Summary Data in JSON (accuknox-cli summary -o json)")
 	summaryCmd.Flags().BoolVar(&summaryOptions.RevDNSLookup, "rev-dns-lookup", false, "Reverse DNS Lookup")
 	summaryCmd.Flags().BoolVar(&summaryOptions.Aggregation, "agg", false, "Aggregate destination files/folder path")
+
+	summaryCmd.Flags().StringVar(&summaryOptions.BaselineFilePath, "baseline", "", "File path location for baseline")
 }
