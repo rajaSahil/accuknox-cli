@@ -21,12 +21,12 @@ import (
 	"github.com/clarketm/json"
 	"sigs.k8s.io/yaml"
 
+	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
 	"github.com/fatih/color"
 	kg "github.com/kubearmor/KubeArmor/KubeArmor/log"
-	"github.com/kubearmor/kubearmor-client/k8s"
 	"github.com/moby/term"
 	log "github.com/sirupsen/logrus"
 )

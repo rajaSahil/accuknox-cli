@@ -12,8 +12,8 @@ import (
 	"strconv"
 
 	"github.com/clarketm/json"
-	"github.com/kubearmor/kubearmor-client/k8s"
-	"github.com/kubearmor/kubearmor-client/utils"
+	"github.com/accuknox/accuknox-cli/k8s"
+	"github.com/accuknox/accuknox-cli/utils"
 	"github.com/rs/zerolog/log"
 	"sigs.k8s.io/yaml"
 
@@ -191,5 +191,4 @@ func Policy(c *k8s.Client, o Options) error {
 			fmt.Printf("%s", policy)
 		}
 	}
-	return nil
-}
+	ret

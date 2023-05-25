@@ -1,4 +1,4 @@
-module github.com/kubearmor/kubearmor-client
+module github.com/accuknox/accuknox-cli
 
 go 1.20
 
@@ -29,14 +29,14 @@ require (
 	github.com/rhysd/go-github-selfupdate v1.2.3
 	github.com/rs/zerolog v1.29.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/spf13/cobra v1.6.1
-	golang.org/x/exp v0.0.0-20221114191408-850992195362
-	golang.org/x/mod v0.8.0
-	golang.org/x/sync v0.1.0
-	golang.org/x/sys v0.6.0
-	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
-	google.golang.org/grpc v1.54.0
-	google.golang.org/protobuf v1.28.1
+	github.com/spf13/cobra v1.7.0
+	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
+	golang.org/x/mod v0.10.0
+	golang.org/x/sync v0.2.0
+	golang.org/x/sys v0.8.0
+	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1 // indirect
+	google.golang.org/grpc v1.55.0
+	google.golang.org/protobuf v1.30.0
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -56,15 +56,16 @@ require (
 	github.com/kubearmor/KubeArmor/pkg/KubeArmorController v0.0.0-20230519075515-e8b45043a53d
 	github.com/kyverno/kyverno v1.9.2
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
-	github.com/onsi/ginkgo/v2 v2.5.1
-	github.com/onsi/gomega v1.24.1
-	golang.org/x/net v0.8.0
-	k8s.io/api v0.26.0
-	k8s.io/apiextensions-apiserver v0.26.0
-	k8s.io/apimachinery v0.26.0
+	github.com/onsi/ginkgo/v2 v2.9.4
+	github.com/onsi/gomega v1.27.6
+	golang.org/x/net v0.10.0
+	golang.org/x/text v0.9.0
+	k8s.io/api v0.27.1
+	k8s.io/apiextensions-apiserver v0.27.1
+	k8s.io/apimachinery v0.27.1
 	k8s.io/cli-runtime v0.27.1
-	k8s.io/client-go v0.26.0
-	k8s.io/utils v0.0.0-20221128185143-99ec85e7a448
+	k8s.io/client-go v0.27.1
+	k8s.io/utils v0.0.0-20230505201702-9f6742963106
 )
 
 require (
@@ -186,11 +187,13 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 // indirect
-	github.com/google/s2a-go v0.1.2 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
 	github.com/google/trillian v1.5.1 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79 // indirect
+	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/in-toto/in-toto-golang v0.6.0 // indirect
@@ -206,7 +209,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/leodido/go-urn v1.2.3 // indirect
 	github.com/letsencrypt/boulder v0.0.0-20230426205424-1c7e0fd1d876 // indirect
-	github.com/kyverno/kyverno v1.6.10 // indirect
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20230326075908-cb1d2100619a // indirect
@@ -301,18 +303,21 @@ require (
 	github.com/xlab/treeprint v1.2.0 // indirect
 	github.com/yashtewari/glob-intersection v0.1.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
-	go.mongodb.org/mongo-driver v1.10.0 // indirect
-	go.opentelemetry.io/otel v1.11.2 // indirect
-	go.opentelemetry.io/otel/trace v1.11.2 // indirect
-	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
-	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
-	go.uber.org/zap v1.23.0 // indirect
-	golang.org/x/crypto v0.3.0 // indirect
-	golang.org/x/oauth2 v0.4.0 // indirect
-	golang.org/x/term v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
-	golang.org/x/time v0.2.0 // indirect
+	github.com/zeebo/errs v1.3.0 // indirect
+	go.mongodb.org/mongo-driver v1.11.4 // indirect
+	go.opencensus.io v0.24.0 // indirect
+	go.opentelemetry.io/otel v1.14.0 // indirect
+	go.opentelemetry.io/otel/trace v1.14.0 // indirect
+	go.starlark.net v0.0.0-20221205180719-3fd0dac74452 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.24.0 // indirect
+	golang.org/x/crypto v0.9.0 // indirect
+	golang.org/x/oauth2 v0.8.0 // indirect
+	golang.org/x/term v0.8.0 // indirect
+	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/tools v0.9.1 // indirect
+	google.golang.org/api v0.114.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	gopkg.in/go-jose/go-jose.v2 v2.6.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

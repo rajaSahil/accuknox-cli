@@ -3,7 +3,7 @@ syntax = "proto3";
 
 package clihandler;
 
-option go_package="github.com/kubearmor-client/vm/clihandler";
+option go_package="github.com/accuknox/accuknox-cli/vm/clihandler";
 
 message CliRequest {
     string KvmName = 1;
