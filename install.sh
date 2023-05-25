@@ -65,12 +65,12 @@ execute() {
 }
 get_binaries() {
   case "$PLATFORM" in
-    darwin/amd64) BINARIES="accuknox-cli" ;;
-    darwin/arm64) BINARIES="accuknox-cli" ;;
-    linux/amd64) BINARIES="accuknox-cli" ;;
-    linux/arm64) BINARIES="accuknox-cli" ;;
-    windows/amd64) BINARIES="accuknox-cli" ;;
-    windows/arm64) BINARIES="accuknox-cli" ;;
+    darwin/amd64) BINARIES="accuknoxcli" ;;
+    darwin/arm64) BINARIES="accuknoxcli" ;;
+    linux/amd64) BINARIES="accuknoxcli" ;;
+    linux/arm64) BINARIES="accuknoxcli" ;;
+    windows/amd64) BINARIES="accuknoxcli" ;;
+    windows/arm64) BINARIES="accuknoxcli" ;;
     *)
       log_crit "platform $PLATFORM is not supported.  Make sure this script is up-to-date and file request at https://github.com/${PREFIX}/issues/new"
       exit 1
@@ -338,7 +338,7 @@ EOF
 PROJECT_NAME="accuknox-cli"
 OWNER=accuknox
 REPO="accuknox-cli"
-BINARY=accuknox-cli
+BINARY=accuknoxcli
 FORMAT=tar.gz
 OS=$(uname_os)
 ARCH=$(uname_arch)

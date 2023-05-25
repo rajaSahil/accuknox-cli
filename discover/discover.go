@@ -11,9 +11,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/clarketm/json"
 	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/accuknox/accuknox-cli/utils"
+	"github.com/clarketm/json"
 	"github.com/rs/zerolog/log"
 	"sigs.k8s.io/yaml"
 
@@ -191,4 +191,5 @@ func Policy(c *k8s.Client, o Options) error {
 			fmt.Printf("%s", policy)
 		}
 	}
-	ret
+	return nil
+}
