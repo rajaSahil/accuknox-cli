@@ -21,6 +21,7 @@ import (
 	"github.com/clarketm/json"
 	"sigs.k8s.io/yaml"
 
+	"github.com/accuknox/accuknox-cli/k8s"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/jsonmessage"
@@ -477,37 +478,91 @@ func getImageDetails(img ImageInfo) error {
 	// step 3: getImageInfo
 	img.getImageInfo()
 
+	if len(img.RepoTags) == 0 {
+		img.RepoTags = append(img.RepoTags, img.Name)
+	}
 	// step 4: get policy from image info
 	img.getPolicyFromImageInfo()
 
 	return nil
 }
 
-func imageHandler(namespace, deployment string, labels LabelMap, imageName string, config string) error {
-	dockerConfigPath = config
-	log.WithFields(log.Fields{
-		"image": imageName,
-	}).Info("pulling image")
+func imageHandler(namespace, deployment string, labels LabelMap, imageName string, c *k8s.Client) error {
+	dockerConfigPath = options.Config
 	img := ImageInfo{
 		Name:       imageName,
 		Namespace:  namespace,
 		Deployment: deployment,
 		Labels:     labels,
 	}
+
+	if len(options.Policy) == 0 {
+		return fmt.Errorf("no policy specified, specify at least one policy to be recommended")
+	}
+
+	policiesToBeRecommendedSet := make(map[string]bool)
+	for _, policy := range options.Policy {
+		policiesToBeRecommendedSet[policy] = true
+	}
+
+	_, containsKubeArmorPolicy := policiesToBeRecommendedSet[KubeArmorPolicy]
+	if containsKubeArmorPolicy {
+		err := recommendKubeArmorPolicies(imageName, img)
+		if err != nil {
+			log.WithError(err).Error("failed to recommend kubearmor policies.")
+			return err
+		}
+	}
+
+	_, containsKyvernoPolicy := policiesToBeRecommendedSet[KyvernoPolicy]
+
+	// Admission Controller Policies are not recommended based on an image
+	if len(options.Images) == 0 && containsKyvernoPolicy {
+		if len(img.RepoTags) == 0 {
+			img.RepoTags = append(img.RepoTags, img.Name)
+		}
+		if !containsKubeArmorPolicy {
+			if err := ReportStart(&img); err != nil {
+				log.WithError(err).Error("report start failed")
+				return err
+			}
+		}
+		err := initClientConnection(c)
+		if err != nil {
+			log.WithError(err).Error("failed to initialize client connection.")
+			return err
+		}
+		err = recommendAdmissionControllerPolicies(img)
+		if err != nil {
+			log.WithError(err).Error("failed to recommend admission controller policies.")
+			return err
+		}
+	}
+
+	if !containsKyvernoPolicy && !containsKubeArmorPolicy {
+		return fmt.Errorf("policy type not supported: %v", options.Policy)
+	}
+	_ = ReportSectEnd(&img)
+
+	return nil
+}
+
+func recommendKubeArmorPolicies(imageName string, img ImageInfo) error {
+	log.WithFields(log.Fields{
+		"image": imageName,
+	}).Info("pulling image")
 	err := pullImage(imageName)
 	if err != nil {
 		log.Warn("Failed to pull image. Dumping generic policies.")
 		img.OS = "linux"
 		img.RepoTags = append(img.RepoTags, img.Name)
 		img.getPolicyFromImageInfo()
-		return nil
+	} else {
+		err = getImageDetails(img)
+		if err != nil {
+			return err
+		}
 	}
-
-	err = getImageDetails(img)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 

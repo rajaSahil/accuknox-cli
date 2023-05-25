@@ -14,6 +14,8 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // HTMLReport Report in HTML format
@@ -141,6 +143,7 @@ type RecordInfo struct {
 	Rec         []Col
 	Policy      string
 	Description string
+	PolicyType  string
 	Refs        []Ref
 }
 
@@ -162,8 +165,36 @@ func (r HTMLReport) Record(ms MatchSpec, policyName string) error {
 			{Name: strings.Join(ms.Spec.Tags[:], "\n")},
 		},
 		Policy:      string(policy),
+		PolicyType:  "Kubearmor Security Policy",
 		Description: ms.Description.Detailed,
 		Refs:        ms.Description.Refs,
+	}
+	_ = r.record.Execute(r.outString, reci)
+	return nil
+}
+
+// RecordAdmissionController addition of new HTML table row for admission controller policies
+func (r HTMLReport) RecordAdmissionController(policyName, action string, annotations map[string]string) error {
+	*r.RecordCnt = *r.RecordCnt + 1
+	policy, err := os.ReadFile(filepath.Clean(policyName))
+	if err != nil {
+		log.WithError(err).Error(fmt.Sprintf("failed to read policy %s", policyName))
+	}
+	policyName = policyName[strings.LastIndex(policyName, "/")+1:]
+	reci := RecordInfo{
+		RowID: fmt.Sprintf("row%d", *r.RecordCnt),
+		Rec: []Col{
+			{Name: policyName},
+			{Name: annotations["recommended-policies.kubearmor.io/description"]},
+			{Name: "-"},
+			{Name: cases.Title(language.English).String(action)},
+			{Name: strings.Join(strings.Split(annotations["recommended-policies.kubearmor.io/tags"], ",")[:], "\n")},
+		},
+		Policy:      string(policy),
+		PolicyType:  "Kyverno Policy",
+		Description: annotations["recommended-policies.kubearmor.io/description-detailed"],
+		// TODO: Figure out how to get the references, adding them to annotations would make them too long
+		Refs: []Ref{},
 	}
 	_ = r.record.Execute(r.outString, reci)
 	return nil
