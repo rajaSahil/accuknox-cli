@@ -27,7 +27,7 @@ var rootCmd = &cobra.Command{
 		}
 		return nil
 	},
-	Use:   "karmor",
+	Use:   "accuknoxcli",
 	Short: "A CLI Utility to help manage KubeArmor",
 	Long: `CLI Utility to help manage KubeArmor
 	
