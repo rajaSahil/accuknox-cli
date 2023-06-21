@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/accuknox/accuknox-cli/k8s"
 	rpb "github.com/accuknox/accuknox-cli/rpb"
 
@@ -96,10 +95,10 @@ func (o *Options) Report(c *k8s.Client) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("%s \n", reportJson)
+	//fmt.Printf("%s \n", reportJson)
 
 	// Write in a temp file
-	tempF, err := os.CreateTemp("/tmp/", "report-*.json")
+	tempF, err := os.CreateTemp("/tmp/", "report.json")
 	if err != nil {
 		return err
 	}
