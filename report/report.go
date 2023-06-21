@@ -98,7 +98,7 @@ func (o *Options) Report(c *k8s.Client) error {
 	//fmt.Printf("%s \n", reportJson)
 
 	// Write in a temp file
-	tempF, err := os.CreateTemp("/tmp/", "report.json")
+	tempF, err := os.CreateTemp("/tmp/", "report-*.json")
 	if err != nil {
 		return err
 	}

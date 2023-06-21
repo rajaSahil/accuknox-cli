@@ -230,7 +230,7 @@ func getDiff(baselineReport, report *rpb.ReportResponse, ignorePath []string) er
 	//fmt.Printf("%s", diffReportJson)
 
 	// Write in a temp file
-	tempF, err := os.CreateTemp("/tmp/", "diff-report")
+	tempF, err := os.CreateTemp("/tmp/", "diff-report-*.json")
 	if err != nil {
 		return err
 	}
