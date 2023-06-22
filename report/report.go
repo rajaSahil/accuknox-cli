@@ -21,17 +21,18 @@ var matchLabels = map[string]string{"app": "discovery-engine"}
 var port int64 = 9089
 
 type Options struct {
-	GRPC          string
-	Clusters      []string
-	Namespaces    []string
-	ResourceType  []string
-	ResourceName  []string
-	Labels        string
-	ContainerName string
-	PodName       string
-	Source        []string
-	Destination   []string
-	Operation     string
+	GRPC             string
+	Clusters         []string
+	Namespaces       []string
+	ResourceType     []string
+	ResourceName     []string
+	Labels           string
+	ContainerName    string
+	PodName          string
+	Source           []string
+	Destination      []string
+	Operation        string
+	BaselineJsonPath string
 }
 
 func GetReport(c *k8s.Client, o *Options) (*rpb.ReportResponse, error) {
@@ -107,7 +108,7 @@ func (o *Options) Report(c *k8s.Client) error {
 		return err
 	}
 
-	baselineReport := readBaselineReportJson("/home/sahil/report.json")
+	baselineReport := readBaselineReportJson(o.BaselineJsonPath)
 
 	err = getDiff(baselineReport, report, []string{})
 

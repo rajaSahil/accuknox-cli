@@ -32,4 +32,6 @@ func init() {
 	reportCmd.Flags().StringArrayVarP(&reportOptions.Source, "source", "s", []string{""}, "Source path")
 	reportCmd.Flags().StringArrayVarP(&reportOptions.Destination, "destination", "d", []string{""}, "Destination path")
 	reportCmd.Flags().StringVar(&reportOptions.Operation, "o", "", "Operation type")
+
+	reportCmd.Flags().StringVarP(&reportOptions.BaselineJsonPath, "baseline-json-filepath", "b", "baseline/report.json", "Operation type")
 }
