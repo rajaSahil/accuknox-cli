@@ -3,10 +3,8 @@ package report
 import (
 	"fmt"
 	rpb "github.com/accuknox/accuknox-cli/rpb"
-	"github.com/accuknox/accuknox-cli/summary"
 	opb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/observability"
 	"github.com/clarketm/json"
-	"github.com/lensesio/tableprinter"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -32,18 +30,19 @@ func getTableOutput(diffReport *rpb.ReportResponse) {
 						EgressConnection:  rsdv.GetSummaryData().GetEgressConnection(),
 						BindConnection:    rsdv.GetSummaryData().GetBindConnection(),
 					}
-					if len(rsdv.GetSummaryData().GetProcessData()) > 0 {
-						summary.DisplaySummaryOutput(resp, false, "process")
-						tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetProcessData())
-					}
-					if len(rsdv.GetSummaryData().GetFileData()) > 0 {
-						summary.DisplaySummaryOutput(resp, false, "file")
-						tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetFileData())
-					}
-					if len(rsdv.GetSummaryData().GetIngressConnection()) > 0 || len(rsdv.GetSummaryData().GetEgressConnection()) > 0 || len(rsdv.GetSummaryData().GetBindConnection()) > 0 {
-						summary.DisplaySummaryOutput(resp, false, "network")
-						tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetEgressConnection())
-					}
+					DisplayReportOutput(resp, true, rsdv.GetResourceType(), rsdv.GetResourceName())
+					//if len(rsdv.GetSummaryData().GetProcessData()) > 0 {
+					//	summary.DisplaySummaryOutput(resp, false, "process")
+					//	tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetProcessData())
+					//}
+					//if len(rsdv.GetSummaryData().GetFileData()) > 0 {
+					//	summary.DisplaySummaryOutput(resp, false, "file")
+					//	tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetFileData())
+					//}
+					//if len(rsdv.GetSummaryData().GetIngressConnection()) > 0 || len(rsdv.GetSummaryData().GetEgressConnection()) > 0 || len(rsdv.GetSummaryData().GetBindConnection()) > 0 {
+					//	summary.DisplaySummaryOutput(resp, false, "network")
+					//	tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetEgressConnection())
+					//}
 
 				}
 			}

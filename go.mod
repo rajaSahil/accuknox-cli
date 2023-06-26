@@ -55,7 +55,6 @@ require (
 	github.com/kubearmor/KubeArmor/deployments v0.0.0-20230510133055-4e30a28b6352
 	github.com/kubearmor/KubeArmor/pkg/KubeArmorController v0.0.0-20230519075515-e8b45043a53d
 	github.com/kyverno/kyverno v1.9.2
-	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d
 	github.com/onsi/ginkgo/v2 v2.9.4
 	github.com/onsi/gomega v1.27.6
@@ -143,7 +142,6 @@ require (
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
-	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.10.2 // indirect
 	github.com/emicklei/proto v1.11.1 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
@@ -205,7 +203,6 @@ require (
 	github.com/jinzhu/copier v0.3.5 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/kataras/tablewriter v0.0.0-20180708051242-e063d29b7c23 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/klauspost/pgzip v1.2.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

@@ -113,7 +113,7 @@ func DisplaySummaryOutput(resp *opb.Response, revDNSLookup bool, requestType str
 			inNwRowData := [][]string{}
 			for _, ingressConnection := range resp.IngressConnection {
 				inNwStrSlice := []string{}
-				domainName := dnsLookup(ingressConnection.IP, revDNSLookup)
+				domainName := DnsLookup(ingressConnection.IP, revDNSLookup)
 				inNwStrSlice = append(inNwStrSlice, ingressConnection.Protocol)
 				inNwStrSlice = append(inNwStrSlice, ingressConnection.Command)
 				inNwStrSlice = append(inNwStrSlice, domainName)
@@ -134,7 +134,7 @@ func DisplaySummaryOutput(resp *opb.Response, revDNSLookup bool, requestType str
 			outNwRowData := [][]string{}
 			for _, egressConnection := range resp.EgressConnection {
 				outNwStrSlice := []string{}
-				domainName := dnsLookup(egressConnection.IP, revDNSLookup)
+				domainName := DnsLookup(egressConnection.IP, revDNSLookup)
 				outNwStrSlice = append(outNwStrSlice, egressConnection.Protocol)
 				outNwStrSlice = append(outNwStrSlice, egressConnection.Command)
 				outNwStrSlice = append(outNwStrSlice, domainName)
@@ -169,7 +169,7 @@ func DisplaySummaryOutput(resp *opb.Response, revDNSLookup bool, requestType str
 	}
 }
 
-func dnsLookup(ip string, revDNSLookup bool) string {
+func DnsLookup(ip string, revDNSLookup bool) string {
 	if revDNSLookup {
 		if strings.Contains(ip, "svc") || strings.Contains(ip, "pod") {
 			return ip
