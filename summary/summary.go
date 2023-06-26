@@ -9,11 +9,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/accuknox/accuknox-cli/utils"
 	"os"
 	"strconv"
 
 	"github.com/accuknox/accuknox-cli/k8s"
-	"github.com/accuknox/accuknox-cli/utils"
 	opb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/observability"
 
 	"google.golang.org/grpc"

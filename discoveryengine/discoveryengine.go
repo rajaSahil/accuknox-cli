@@ -3,12 +3,12 @@ package discoveryengine
 import (
 	"context"
 	"fmt"
+	"github.com/accuknox/accuknox-cli/utils"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/accuknox/accuknox-cli/k8s"
-	"github.com/accuknox/accuknox-cli/utils"
 	pb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/license"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

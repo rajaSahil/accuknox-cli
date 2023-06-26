@@ -6,8 +6,8 @@ import (
 	"errors"
 	"github.com/accuknox/accuknox-cli/k8s"
 	rpb "github.com/accuknox/accuknox-cli/rpb"
-
 	"github.com/accuknox/accuknox-cli/utils"
+
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -32,6 +32,7 @@ type Options struct {
 	Source           []string
 	Destination      []string
 	Operation        string
+	IgnorePaths      []string
 	BaselineJsonPath string
 }
 
@@ -110,7 +111,7 @@ func (o *Options) Report(c *k8s.Client) error {
 
 	baselineReport := readBaselineReportJson(o.BaselineJsonPath)
 
-	err = getDiff(baselineReport, report, []string{})
+	err = getDiff(baselineReport, report, o.IgnorePaths)
 
 	if err != nil {
 		return err

@@ -52,7 +52,7 @@ require (
 	github.com/google/go-github v17.0.0+incompatible
 	github.com/kubearmor/KVMService/src/types v0.0.0-20220714130113-b0eba8c9ff34
 	github.com/kubearmor/KubeArmor/KubeArmor v0.0.0-20230519075515-e8b45043a53d
-	github.com/kubearmor/KubeArmor/deployments v0.0.0-20230519075515-e8b45043a53d
+	github.com/kubearmor/KubeArmor/deployments v0.0.0-20230510133055-4e30a28b6352
 	github.com/kubearmor/KubeArmor/pkg/KubeArmorController v0.0.0-20230519075515-e8b45043a53d
 	github.com/kyverno/kyverno v1.9.2
 	github.com/lensesio/tableprinter v0.0.0-20201125135848-89e81fc956e7

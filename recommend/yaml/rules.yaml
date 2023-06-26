@@ -67,8 +67,8 @@ policyRules:
     - name: MITRE-TTP
       url:
       - https://attack.mitre.org/techniques/T1555/
-    tldr: abuse common password storage locations to obtain user credentials
-    detailed: Adversaries may search for common password storage locations to obtain
+    tldr: abuse utils password storage locations to obtain user credentials
+    detailed: Adversaries may search for utils password storage locations to obtain
       user credentials. Passwords are stored in several places on a system, depending
       on the operating system or application holding the credentials.
   spec:

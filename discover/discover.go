@@ -8,11 +8,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/accuknox/accuknox-cli/utils"
 	"os"
 	"strconv"
 
 	"github.com/accuknox/accuknox-cli/k8s"
-	"github.com/accuknox/accuknox-cli/utils"
 	"github.com/clarketm/json"
 	"github.com/rs/zerolog/log"
 	"sigs.k8s.io/yaml"

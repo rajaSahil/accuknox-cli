@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/accuknox/accuknox-cli/utils"
 	"os"
 	"os/signal"
 	"regexp"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/accuknox/accuknox-cli/k8s"
-	"github.com/accuknox/accuknox-cli/utils"
 )
 
 type regexType *regexp.Regexp

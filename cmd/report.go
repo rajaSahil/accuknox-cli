@@ -23,15 +23,16 @@ func init() {
 	rootCmd.AddCommand(reportCmd)
 
 	reportCmd.Flags().StringVar(&reportOptions.GRPC, "gRPC", "", "gRPC server information")
-	reportCmd.Flags().StringArrayVarP(&reportOptions.Clusters, "clusters", "c", []string{""}, "Clusters names")
-	reportCmd.Flags().StringArrayVarP(&reportOptions.Namespaces, "namespaces", "n", []string{""}, "Namespaces names")
-	reportCmd.Flags().StringArrayVarP(&reportOptions.ResourceType, "resource-types", "r", []string{""}, "Resource types")
-	reportCmd.Flags().StringArrayVarP(&reportOptions.ResourceName, "resource-names", "w", []string{""}, "Resource names")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.Clusters, "clusters", "c", []string{}, "Clusters names")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.Namespaces, "namespaces", "n", []string{}, "Namespaces names")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.ResourceType, "resource-types", "r", []string{}, "Resource types")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.ResourceName, "resource-names", "w", []string{}, "Resource names")
 	reportCmd.Flags().StringVarP(&reportOptions.Labels, "labels", "l", "", "Labels")
 	reportCmd.Flags().StringVar(&reportOptions.ContainerName, "container", "", "Container name")
-	reportCmd.Flags().StringArrayVarP(&reportOptions.Source, "source", "s", []string{""}, "Source path")
-	reportCmd.Flags().StringArrayVarP(&reportOptions.Destination, "destination", "d", []string{""}, "Destination path")
-	reportCmd.Flags().StringVar(&reportOptions.Operation, "o", "", "Operation type")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.Source, "source", "s", []string{}, "Source path")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.Destination, "destination", "d", []string{}, "Destination path")
+	reportCmd.Flags().StringVarP(&reportOptions.Operation, "operation", "o", "", "Operation type")
+	reportCmd.Flags().StringSliceVarP(&reportOptions.IgnorePaths, "ignore-paths", "i", []string{}, "Destination path")
 
 	reportCmd.Flags().StringVarP(&reportOptions.BaselineJsonPath, "baseline-json-filepath", "b", "baseline/report.json", "Operation type")
 }
