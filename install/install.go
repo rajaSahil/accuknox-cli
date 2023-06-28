@@ -16,19 +16,20 @@ import (
 	"time"
 
 	"github.com/clarketm/json"
+	"github.com/fatih/color"
 	"sigs.k8s.io/yaml"
 
 	"github.com/accuknox/accuknox-cli/k8s"
+	"github.com/accuknox/accuknox-cli/probe"
 	deployments "github.com/kubearmor/KubeArmor/deployments/get"
 
-	"golang.org/x/mod/semver"
 	v1 "k8s.io/api/apps/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// Options for accuknox-cli install
+// Options for karmor install
 type Options struct {
 	Namespace      string
 	InitImage      string
@@ -36,6 +37,7 @@ type Options struct {
 	Tag            string
 	Audit          string
 	Block          string
+	Visibility     string
 	Force          bool
 	Local          bool
 	Save           bool
@@ -92,7 +94,7 @@ func printBar(msg string, total int) int {
 	if progress == total {
 		time.Sleep(500 * time.Millisecond)
 		clearLine(90)
-		fmt.Printf("🥳  Done Installing KubeArmor\n")
+		fmt.Printf("🥳\tDone Installing KubeArmor\n")
 	}
 	return 0
 }
@@ -103,7 +105,7 @@ func printAnimation(msg string, flag bool) int {
 	if flag {
 		progress++
 	}
-	printBar("    KubeArmor Installing ", 16)
+	printBar("\tKubeArmor Installing ", 17)
 	return 0
 }
 
@@ -114,9 +116,9 @@ func printMessage(msg string, flag bool) int {
 	return 0
 }
 
-func checkPods(c *k8s.Client) int {
+func checkPods(c *k8s.Client, o Options) {
 	cursor := [4]string{"|", "/", "—", "\\"}
-	fmt.Printf("😋   Checking if KubeArmor pods are running ...")
+	fmt.Printf("😋\tChecking if KubeArmor pods are running ...")
 	stime := time.Now()
 	otime := stime.Add(600 * time.Second)
 	for {
@@ -124,22 +126,58 @@ func checkPods(c *k8s.Client) int {
 		pods, _ := c.K8sClientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: "kubearmor-app", FieldSelector: "status.phase!=Running"})
 		podno := len(pods.Items)
 		clearLine(90)
-		fmt.Printf("\rKUBEARMOR pods left to run : %d ... %s", podno, cursor[cursorcount])
+		fmt.Printf("\r\tKUBEARMOR pods left to run : %d ... %s", podno, cursor[cursorcount])
 		cursorcount++
 		if cursorcount == 4 {
 			cursorcount = 0
 		}
 		if !otime.After(time.Now()) {
-			fmt.Printf("\r⌚️  Check Incomplete due to Time-Out!                     \n")
+			fmt.Printf("\r⌚️\tCheck Incomplete due to Time-Out!                     \n")
 			break
 		}
 		if podno == 0 {
-			fmt.Printf("\r🥳  Done Checking , ALL Services are running!             \n")
-			fmt.Printf("⌚️  Execution Time : %s \n", time.Since(stime))
+			fmt.Printf("\r🥳\tDone Checking , ALL Services are running!             \n")
+			fmt.Printf("⌚️\tExecution Time : %s \n", time.Since(stime))
 			break
 		}
 	}
-	return 0
+	fmt.Print("\n🔧\tVerifying KubeArmor functionality (this may take upto a minute) ...")
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Second)
+	defer cancel()
+
+	for {
+		select {
+		case <-time.After(10 * time.Second):
+		case <-ctx.Done():
+			fmt.Print("⚠️\tFailed verifying KubeArmor functionality ...")
+			return
+		}
+		probeData, _, err := probe.ProbeRunningKubeArmorNodes(c, probe.Options{
+			Namespace: o.Namespace,
+		})
+		if err != nil || len(probeData) == 0 {
+			fmt.Printf("\r🔧\tVerifying KubeArmor functionality (this may take upto a minute) ... %s", cursor[cursorcount])
+			cursorcount++
+			if cursorcount == 4 {
+				cursorcount = 0
+			}
+			continue
+		}
+		enforcing := true
+		for _, k := range probeData {
+			if k.ActiveLSM == "" || !k.ContainerSecurity {
+				enforcing = false
+				break
+			}
+		}
+		if enforcing {
+			fmt.Print(color.New(color.FgWhite, color.Bold).Sprint("\n\n\t🛡️\tYour Cluster is Armored Up! \n"))
+		} else {
+			color.Yellow("\n\n\t⚠️\tKubeArmor is running in Audit mode, only Observability will be available and Policy Enforcement won't be available. \n")
+		}
+		break
+	}
+
 }
 
 func checkTerminatingPods(c *k8s.Client) int {
@@ -170,31 +208,31 @@ func checkTerminatingPods(c *k8s.Client) int {
 	return 0
 }
 
-// K8sInstaller for accuknox-cli install
+// K8sInstaller for karmor install
 func K8sInstaller(c *k8s.Client, o Options) error {
 	animation = o.Animation
 	var env string
 	if o.Env.Auto {
-		env = AutoDetectEnvironment(c)
+		env = k8s.AutoDetectEnvironment(c)
 		if env == "none" {
 			return errors.New("unsupported environment or cluster not configured correctly")
 		}
-		printMessage("😄  Auto Detected Environment : "+env, true)
+		printMessage("😄\tAuto Detected Environment : "+env, true)
 	} else {
 		env = o.Env.Environment
-		printMessage("😄  Environment : "+env, true)
+		printMessage("😄\tEnvironment : "+env, true)
 	}
 
 	var printYAML []interface{}
 
 	kspCRD := CreateCustomResourceDefinition(kspName)
 	if !o.Save {
-		printMessage("🔥  CRD "+kspName+"  ", true)
+		printMessage("🔥\tCRD "+kspName+"  ", true)
 		if _, err := c.APIextClientset.ApiextensionsV1().CustomResourceDefinitions().Create(context.Background(), &kspCRD, metav1.CreateOptions{}); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				return fmt.Errorf("failed to create CRD %s: %+v", kspName, err)
 			}
-			printMessage("ℹ️   CRD "+kspName+" already exists", false)
+			printMessage("ℹ️\tCRD "+kspName+" already exists", false)
 		}
 	} else {
 		printYAML = append(printYAML, kspCRD)
@@ -202,12 +240,12 @@ func K8sInstaller(c *k8s.Client, o Options) error {
 
 	hspCRD := CreateCustomResourceDefinition(hspName)
 	if !o.Save {
-		printMessage("🔥  CRD "+hspName+"  ", true)
+		printMessage("🔥\tCRD "+hspName+"  ", true)
 		if _, err := c.APIextClientset.ApiextensionsV1().CustomResourceDefinitions().Create(context.Background(), &hspCRD, metav1.CreateOptions{}); err != nil {
 			if !apierrors.IsAlreadyExists(err) {
 				return fmt.Errorf("failed to create CRD %s: %+v", hspName, err)
 			}
-			printMessage("ℹ️   CRD "+hspName+" already exists", false)
+			printMessage("ℹ️\tCRD "+hspName+" already exists", false)
 		}
 	} else {
 		printYAML = append(printYAML, hspCRD)
@@ -215,25 +253,38 @@ func K8sInstaller(c *k8s.Client, o Options) error {
 
 	serviceAccount := deployments.GetServiceAccount(o.Namespace)
 	if !o.Save {
-		printMessage("💫  Service Account  ", true)
+		printMessage("💫\tService Account  ", true)
 		if _, err := c.K8sClientset.CoreV1().ServiceAccounts(o.Namespace).Create(context.Background(), serviceAccount, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   Service Account already exists  ", false)
+			printMessage("ℹ️\tService Account already exists  ", false)
 		}
 	} else {
 		printYAML = append(printYAML, serviceAccount)
 	}
 
+	clusterRole := deployments.GetClusterRole()
+	if !o.Save {
+		printMessage("⚙️\tCluster Role  ", true)
+		if _, err := c.K8sClientset.RbacV1().ClusterRoles().Create(context.Background(), clusterRole, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return err
+			}
+			printMessage("ℹ️\tCluster Role already exists  ", false)
+		}
+	} else {
+		printYAML = append(printYAML, clusterRole)
+	}
+
 	clusterRoleBinding := deployments.GetClusterRoleBinding(o.Namespace)
 	if !o.Save {
-		printMessage("⚙️   Cluster Role Bindings  ", true)
+		printMessage("⚙️\tCluster Role Bindings  ", true)
 		if _, err := c.K8sClientset.RbacV1().ClusterRoleBindings().Create(context.Background(), clusterRoleBinding, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   Cluster Role Bindings already exists  ", false)
+			printMessage("ℹ️\tCluster Role Bindings already exists  ", false)
 		}
 	} else {
 		printYAML = append(printYAML, clusterRoleBinding)
@@ -241,25 +292,28 @@ func K8sInstaller(c *k8s.Client, o Options) error {
 
 	relayService := deployments.GetRelayService(o.Namespace)
 	if !o.Save {
-		printMessage("🛡   KubeArmor Relay Service  ", true)
+		printMessage("🛡\tKubeArmor Relay Service  ", true)
 		if _, err := c.K8sClientset.CoreV1().Services(o.Namespace).Create(context.Background(), relayService, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor Relay Service already exists  ", false)
+			printMessage("ℹ️\tKubeArmor Relay Service already exists  ", false)
 		}
 	} else {
 		printYAML = append(printYAML, relayService)
 	}
 
 	relayDeployment := deployments.GetRelayDeployment(o.Namespace)
+	if o.Local {
+		relayDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = "IfNotPresent"
+	}
 	if !o.Save {
-		printMessage("🛰   KubeArmor Relay Deployment  ", true)
+		printMessage("🛰\tKubeArmor Relay Deployment  ", true)
 		if _, err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Create(context.Background(), relayDeployment, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor Relay Deployment already exists  ", false)
+			printMessage("ℹ️\tKubeArmor Relay Deployment already exists  ", false)
 		}
 	} else {
 		printYAML = append(printYAML, relayDeployment)
@@ -277,7 +331,7 @@ func K8sInstaller(c *k8s.Client, o Options) error {
 	}
 	daemonset.Spec.Template.Spec.Containers[0].Image = o.KubearmorImage
 	daemonset.Spec.Template.Spec.InitContainers[0].Image = o.InitImage
-	if o.Local == true {
+	if o.Local {
 		daemonset.Spec.Template.Spec.Containers[0].ImagePullPolicy = "IfNotPresent"
 		daemonset.Spec.Template.Spec.InitContainers[0].ImagePullPolicy = "IfNotPresent"
 	}
@@ -300,136 +354,177 @@ func K8sInstaller(c *k8s.Client, o Options) error {
 		daemonset.Spec.Template.Spec.Containers[0].Args = append(daemonset.Spec.Template.Spec.Containers[0].Args, "-defaultCapabilitiesPosture=block")
 	}
 	s := strings.Join(daemonset.Spec.Template.Spec.Containers[0].Args, " ")
-	printMessage("🛡   KubeArmor DaemonSet - Init "+daemonset.Spec.Template.Spec.InitContainers[0].Image+", Container "+daemonset.Spec.Template.Spec.Containers[0].Image+s+"  ", true)
+	printMessage("🛡\tKubeArmor DaemonSet - Init "+daemonset.Spec.Template.Spec.InitContainers[0].Image+", Container "+daemonset.Spec.Template.Spec.Containers[0].Image+s+"  ", true)
 
 	if !o.Save {
 		if _, err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Create(context.Background(), daemonset, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor DaemonSet already exists  ", false)
+			printMessage("ℹ️\tKubeArmor DaemonSet already exists  ", false)
 		}
 	} else {
 		printYAML = append(printYAML, daemonset)
 	}
 
-	policyManagerService := deployments.GetPolicyManagerService(o.Namespace)
-	if !o.Save {
-		printMessage("🧐  KubeArmor Policy Manager Service  ", true)
-		if _, err := c.K8sClientset.CoreV1().Services(o.Namespace).Create(context.Background(), policyManagerService, metav1.CreateOptions{}); err != nil {
-			if !strings.Contains(err.Error(), "already exists") {
-				return err
-			}
-			printMessage("ℹ️   KubeArmor Policy Manager Service already exists  ", false)
-		}
-	} else {
-		printYAML = append(printYAML, policyManagerService)
-	}
-
-	policyManagerDeployment := deployments.GetPolicyManagerDeployment(o.Namespace)
-	if !o.Save {
-		printMessage("🤖  KubeArmor Policy Manager Deployment  ", true)
-		if _, err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Create(context.Background(), policyManagerDeployment, metav1.CreateOptions{}); err != nil {
-			if !strings.Contains(err.Error(), "already exists") {
-				return err
-			}
-			printMessage("ℹ️   KubeArmor Policy Manager Deployment already exists  ", false)
-		}
-	} else {
-		printYAML = append(printYAML, policyManagerDeployment)
-	}
-
-	hostPolicyManagerService := deployments.GetHostPolicyManagerService(o.Namespace)
-	if !o.Save {
-		printMessage("😃  KubeArmor Host Policy Manager Service  ", true)
-		if _, err := c.K8sClientset.CoreV1().Services(o.Namespace).Create(context.Background(), hostPolicyManagerService, metav1.CreateOptions{}); err != nil {
-			if !strings.Contains(err.Error(), "already exists") {
-				return err
-			}
-			printMessage("ℹ️   KubeArmor Host Policy Manager Service already exists  ", false)
-		}
-	} else {
-		printYAML = append(printYAML, hostPolicyManagerService)
-	}
-
-	hostPolicyManagerDeployment := deployments.GetHostPolicyManagerDeployment(o.Namespace)
-	if !o.Save {
-		printMessage("🛡   KubeArmor Host Policy Manager Deployment  ", true)
-		if _, err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Create(context.Background(), hostPolicyManagerDeployment, metav1.CreateOptions{}); err != nil {
-			if !strings.Contains(err.Error(), "already exists") {
-				return err
-			}
-			printMessage("ℹ️   KubeArmor Host Policy Manager Deployment already exists  ", false)
-		}
-	} else {
-		printYAML = append(printYAML, hostPolicyManagerDeployment)
-	}
-
-	caCert, tlsCrt, tlsKey, err := GeneratePki(o.Namespace, deployments.AnnotationsControllerServiceName)
+	caCert, tlsCrt, tlsKey, err := GeneratePki(o.Namespace, deployments.KubeArmorControllerWebhookServiceName)
 	if err != nil {
-		printMessage("Couldn't generate TLS secret  ", false)
+		printMessage("C\tldn't generate TLS secret  ", false)
 		return err
 	}
-	annotationsControllerTLSSecret := deployments.GetAnnotationsControllerTLSSecret(o.Namespace, caCert.String(), tlsCrt.String(), tlsKey.String())
+	kubearmorControllerTLSSecret := deployments.GetKubeArmorControllerTLSSecret(o.Namespace, caCert.String(), tlsCrt.String(), tlsKey.String())
 	if !o.Save {
-		printMessage("🛡   KubeArmor Annotation Controller TLS certificates  ", true)
-		if _, err := c.K8sClientset.CoreV1().Secrets(o.Namespace).Create(context.Background(), annotationsControllerTLSSecret, metav1.CreateOptions{}); err != nil {
+		printMessage("🛡\tKubeArmor Controller TLS certificates  ", true)
+		if _, err := c.K8sClientset.CoreV1().Secrets(o.Namespace).Create(context.Background(), kubearmorControllerTLSSecret, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor Annotation Controller TLS certificates already exists  ", false)
+			printMessage("ℹ️\tKubeArmor Controller TLS certificates already exists  ", false)
 		}
 	} else {
-		printYAML = append(printYAML, annotationsControllerTLSSecret)
+		printYAML = append(printYAML, kubearmorControllerTLSSecret)
 	}
 
-	annotationsControllerDeployment := deployments.GetAnnotationsControllerDeployment(o.Namespace)
+	controllerServiceAccount := deployments.GetKubeArmorControllerServiceAccount(o.Namespace)
 	if !o.Save {
-		printMessage("🚀  KubeArmor Annotation Controller Deployment  ", true)
-		if _, err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Create(context.Background(), annotationsControllerDeployment, metav1.CreateOptions{}); err != nil {
+		printMessage("💫\tKubeArmor Controller Service Account  ", true)
+		if _, err := c.K8sClientset.CoreV1().ServiceAccounts(o.Namespace).Create(context.Background(), controllerServiceAccount, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor Annotation Controller Deployment already exists  ", false)
+			printMessage("ℹ️\tKubeArmor Controller Service Account already exists  ", false)
 		}
 	} else {
-		printYAML = append(printYAML, annotationsControllerDeployment)
+		printYAML = append(printYAML, controllerServiceAccount)
 	}
 
-	annotationsControllerService := deployments.GetAnnotationsControllerService(o.Namespace)
+	controllerClusterRole := deployments.GetKubeArmorControllerClusterRole()
+	controllerClusterRoleBinding := deployments.GetKubeArmorControllerClusterRoleBinding(o.Namespace)
+	controllerRole := deployments.GetKubeArmorControllerLeaderElectionRole(o.Namespace)
+	controllerRoleBinding := deployments.GetKubeArmorControllerLeaderElectionRoleBinding(o.Namespace)
+	controllerProxyRole := deployments.GetKubeArmorControllerProxyRole()
+	controllerProxyRoleBinding := deployments.GetKubeArmorControllerProxyRoleBinding(o.Namespace)
+	controllerMetricsReaderRole := deployments.GetKubeArmorControllerMetricsReaderRole()
+	controllerMetricsReaderRoleBinding := deployments.GetKubeArmorControllerMetricsReaderRoleBinding(o.Namespace)
 	if !o.Save {
-		printMessage("🚀  KubeArmor Annotation Controller Service  ", true)
-		if _, err := c.K8sClientset.CoreV1().Services(o.Namespace).Create(context.Background(), annotationsControllerService, metav1.CreateOptions{}); err != nil {
+		printMessage("⚙️\tKubeArmor Controller Roles  ", true)
+		if _, err := c.K8sClientset.RbacV1().ClusterRoles().Create(context.Background(), controllerClusterRole, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
-				return err
+				fmt.Print("Error while installing KubeArmor Controller ClusterRole")
 			}
-			printMessage("ℹ️   KubeArmor Annotation Controller Service already exists  ", false)
+		}
+		if _, err := c.K8sClientset.RbacV1().ClusterRoleBindings().Create(context.Background(), controllerClusterRoleBinding, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller ClusterRoleBinding")
+			}
+		}
+		if _, err := c.K8sClientset.RbacV1().Roles(o.Namespace).Create(context.Background(), controllerRole, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller Role")
+			}
+		}
+		if _, err := c.K8sClientset.RbacV1().RoleBindings(o.Namespace).Create(context.Background(), controllerRoleBinding, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller RoleBinding")
+			}
+		}
+		if _, err := c.K8sClientset.RbacV1().ClusterRoles().Create(context.Background(), controllerProxyRole, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller ProxyRole")
+			}
+		}
+		if _, err := c.K8sClientset.RbacV1().ClusterRoleBindings().Create(context.Background(), controllerProxyRoleBinding, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller ProxyRoleBinding")
+			}
+		}
+		if _, err := c.K8sClientset.RbacV1().ClusterRoles().Create(context.Background(), controllerMetricsReaderRole, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller MetricsReaderRole")
+			}
+		}
+		if _, err := c.K8sClientset.RbacV1().ClusterRoleBindings().Create(context.Background(), controllerMetricsReaderRoleBinding, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				fmt.Print("Error while installing KubeArmor Controller MetricsReaderRoleBinding")
+			}
 		}
 	} else {
-		printYAML = append(printYAML, annotationsControllerService)
+		printYAML = append(printYAML, controllerClusterRole)
+		printYAML = append(printYAML, controllerClusterRoleBinding)
+		printYAML = append(printYAML, controllerRole)
+		printYAML = append(printYAML, controllerRoleBinding)
+		printYAML = append(printYAML, controllerProxyRole)
+		printYAML = append(printYAML, controllerProxyRoleBinding)
+		printYAML = append(printYAML, controllerMetricsReaderRole)
+		printYAML = append(printYAML, controllerMetricsReaderRoleBinding)
 	}
 
-	annotationsControllerMutationAdmissionConfiguration := deployments.GetAnnotationsControllerMutationAdmissionConfiguration(o.Namespace, caCert.Bytes())
+	kubearmorControllerDeployment := deployments.GetKubeArmorControllerDeployment(o.Namespace)
+	if o.Local {
+		kubearmorControllerDeployment.Spec.Template.Spec.Containers[0].ImagePullPolicy = "IfNotPresent"
+	}
 	if !o.Save {
-		printMessage("🤩  KubeArmor Annotation Controller Mutation Admission Registration  ", true)
-		if _, err := c.K8sClientset.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(context.Background(), annotationsControllerMutationAdmissionConfiguration, metav1.CreateOptions{}); err != nil {
+		printMessage("🚀\tKubeArmor Controller Deployment  ", true)
+		if _, err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Create(context.Background(), kubearmorControllerDeployment, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor Annotation Controller Mutation Admission Registration already exists  ", false)
+			printMessage("ℹ️\tKubeArmor Controller Deployment already exists  ", false)
 		}
 	} else {
-		printYAML = append(printYAML, annotationsControllerMutationAdmissionConfiguration)
+		printYAML = append(printYAML, kubearmorControllerDeployment)
+	}
+
+	kubearmorControllerMetricsService := deployments.GetKubeArmorControllerMetricsService(o.Namespace)
+	if !o.Save {
+		printMessage("🚀\tKubeArmor Controller Metrics Service  ", true)
+		if _, err := c.K8sClientset.CoreV1().Services(o.Namespace).Create(context.Background(), kubearmorControllerMetricsService, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return err
+			}
+			printMessage("ℹ️\tKubeArmor Controller Metrics Service already exists  ", false)
+		}
+	} else {
+		printYAML = append(printYAML, kubearmorControllerMetricsService)
+	}
+
+	kubearmorControllerWebhookService := deployments.GetKubeArmorControllerWebhookService(o.Namespace)
+	if !o.Save {
+		printMessage("🚀\tKubeArmor Controller Webhook Service  ", true)
+		if _, err := c.K8sClientset.CoreV1().Services(o.Namespace).Create(context.Background(), kubearmorControllerWebhookService, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return err
+			}
+			printMessage("ℹ️\tKubeArmor Controller Webhook Service already exists  ", false)
+		}
+	} else {
+		printYAML = append(printYAML, kubearmorControllerWebhookService)
+	}
+
+	kubearmorControllerMutationAdmissionConfiguration := deployments.GetKubeArmorControllerMutationAdmissionConfiguration(o.Namespace, caCert.Bytes())
+	if !o.Save {
+		printMessage("🤩\tKubeArmor Controller Mutation Admission Registration  ", true)
+		if _, err := c.K8sClientset.AdmissionregistrationV1().MutatingWebhookConfigurations().Create(context.Background(), kubearmorControllerMutationAdmissionConfiguration, metav1.CreateOptions{}); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return err
+			}
+			printMessage("ℹ️\tKubeArmor Controller Mutation Admission Registration already exists  ", false)
+		}
+	} else {
+		printYAML = append(printYAML, kubearmorControllerMutationAdmissionConfiguration)
 	}
 
 	kubearmorConfigMap := deployments.GetKubearmorConfigMap(o.Namespace, deployments.KubeArmorConfigMapName)
+	if o.Visibility != "" && o.Visibility != kubearmorConfigMap.Data["visibility"] {
+		kubearmorConfigMap.Data["visibility"] = o.Visibility
+	}
 	if !o.Save {
-		printMessage("🚀  KubeArmor ConfigMap Creation  ", true)
+		printMessage("🚀\tKubeArmor ConfigMap Creation  ", true)
 		if _, err := c.K8sClientset.CoreV1().ConfigMaps(o.Namespace).Create(context.Background(), kubearmorConfigMap, metav1.CreateOptions{}); err != nil {
 			if !strings.Contains(err.Error(), "already exists") {
 				return err
 			}
-			printMessage("ℹ️   KubeArmor ConfigMap already exists  ", false)
+			printMessage("ℹ️\tKubeArmor ConfigMap already exists  ", false)
 		}
 	} else {
 		printYAML = append(printYAML, kubearmorConfigMap)
@@ -463,11 +558,11 @@ func K8sInstaller(c *k8s.Client, o Options) error {
 			return err
 		}
 		s3 := f.Name()
-		printMessage("🤩   KubeArmor manifest file saved to \033[1m"+s3+"\033[0m", false)
+		printMessage("🤩\tKubeArmor manifest file saved to \033[1m"+s3+"\033[0m", false)
 
 	}
-	if animation {
-		checkPods(c)
+	if animation && !o.Save {
+		checkPods(c, o)
 	}
 	return nil
 }
@@ -519,39 +614,104 @@ func removeAnnotations(c *k8s.Client) {
 	}
 }
 
-// K8sUninstaller for accuknox-cli uninstall
+// K8sUninstaller for karmor uninstall
 func K8sUninstaller(c *k8s.Client, o Options) error {
 	animation = o.Animation
 	fmt.Print("❌   Mutation Admission Registration ...\n")
-	if err := c.K8sClientset.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.Background(), deployments.AnnotationsControllerServiceName, metav1.DeleteOptions{}); err != nil {
+	if err := c.K8sClientset.AdmissionregistrationV1().MutatingWebhookConfigurations().Delete(context.Background(), deployments.KubeArmorControllerMutatingWebhookConfiguration, metav1.DeleteOptions{}); err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
 		fmt.Print("ℹ️   Mutation Admission Registration not found ...\n")
 	}
 
-	fmt.Print("❌   KubeArmor Annotation Controller Service ...\n")
-	if err := c.K8sClientset.CoreV1().Services(o.Namespace).Delete(context.Background(), deployments.AnnotationsControllerServiceName, metav1.DeleteOptions{}); err != nil {
+	fmt.Print("❌   KubeArmor Controller Webhook Service ...\n")
+	if err := c.K8sClientset.CoreV1().Services(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerWebhookServiceName, metav1.DeleteOptions{}); err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
-		fmt.Print("ℹ️   KubeArmor Annotation Controller Service not found ...\n")
+		fmt.Print("ℹ️   KubeArmor Controller Webhook Service not found ...\n")
 	}
 
-	fmt.Print("❌   KubeArmor Annotation Controller Deployment ...\n")
-	if err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Delete(context.Background(), deployments.AnnotationsControllerDeploymentName, metav1.DeleteOptions{}); err != nil {
+	fmt.Print("❌   KubeArmor Controller Metrics Service ...\n")
+	if err := c.K8sClientset.CoreV1().Services(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerMetricsServiceName, metav1.DeleteOptions{}); err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
-		fmt.Print("ℹ️   KubeArmor Annotation Controller Deployment not found ...\n")
+		fmt.Print("ℹ️   KubeArmor Controller Metrics Service not found ...\n")
 	}
 
-	fmt.Print("❌   KubeArmor Annotation Controller TLS certificates ...\n")
+	fmt.Print("❌   KubeArmor Controller Deployment ...\n")
+	if err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerDeploymentName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			return err
+		}
+		fmt.Print("ℹ️   KubeArmor Controller Deployment not found ...\n")
+	}
+
+	fmt.Print("❌   KubeArmor Controller Service Account ...\n")
+	if err := c.K8sClientset.CoreV1().ServiceAccounts(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerServiceAccountName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			return err
+		}
+		fmt.Print("ℹ️   KubeArmor Controller Service Account not found ...\n")
+	}
+
+	fmt.Print("❌   KubeArmor Controller Roles ...\n")
+	if err := c.K8sClientset.RbacV1().ClusterRoles().Delete(context.Background(), deployments.KubeArmorControllerClusterRoleName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Cluster Role\n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().ClusterRoleBindings().Delete(context.Background(), deployments.KubeArmorControllerClusterRoleBindingName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Cluster Role Bindings\n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().Roles(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerLeaderElectionRoleName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not foundists") {
+			fmt.Print("Error while uninstalKubeArmor Controller Roleling \n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().RoleBindings(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerLeaderElectionRoleBindingName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Role Bindings\n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().ClusterRoles().Delete(context.Background(), deployments.KubeArmorControllerProxyRoleName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Proxy Role\n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().ClusterRoleBindings().Delete(context.Background(), deployments.KubeArmorControllerProxyRoleBindingName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Proxy Role Bindings\n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().ClusterRoles().Delete(context.Background(), deployments.KubeArmorControllerMetricsReaderRoleName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Metrics Reader Role\n")
+		}
+	}
+
+	if err := c.K8sClientset.RbacV1().ClusterRoleBindings().Delete(context.Background(), deployments.KubeArmorControllerMetricsReaderRoleBindingName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			fmt.Print("Error while uninstalling KubeArmor Controller Metrics Reader Role Bindings\n")
+		}
+	}
+
+	fmt.Print("❌   KubeArmor Controller TLS certificates ...\n")
 	if err := c.K8sClientset.CoreV1().Secrets(o.Namespace).Delete(context.Background(), deployments.KubeArmorControllerSecretName, metav1.DeleteOptions{}); err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
-		fmt.Print("ℹ️   KubeArmor Annotation Controller TLS certificates not found ...\n")
+		fmt.Print("ℹ️   KubeArmor Controller TLS certificates not found ...\n")
 	}
 	fmt.Print("❌   Service Account ...\n")
 	if err := c.K8sClientset.CoreV1().ServiceAccounts(o.Namespace).Delete(context.Background(), serviceAccountName, metav1.DeleteOptions{}); err != nil {
@@ -573,6 +733,14 @@ func K8sUninstaller(c *k8s.Client, o Options) error {
 			}
 			fmt.Print("ℹ️   Cluster Role Bindings not found ...\n")
 		}
+	}
+
+	fmt.Print("❌   Cluster Role ...\n")
+	if err := c.K8sClientset.RbacV1().ClusterRoles().Delete(context.Background(), deployments.KubeArmorClusterRoleName, metav1.DeleteOptions{}); err != nil {
+		if !strings.Contains(err.Error(), "not found") {
+			return err
+		}
+		fmt.Print("ℹ️   Cluster Role not found ...\n")
 	}
 
 	fmt.Print("❌   KubeArmor Relay Service ...\n")
@@ -597,38 +765,6 @@ func K8sUninstaller(c *k8s.Client, o Options) error {
 			return err
 		}
 		fmt.Print("ℹ️   KubeArmor DaemonSet not found ...\n")
-	}
-
-	fmt.Print("❌   KubeArmor Policy Manager Service ...\n")
-	if err := c.K8sClientset.CoreV1().Services(o.Namespace).Delete(context.Background(), policyManagerServiceName, metav1.DeleteOptions{}); err != nil {
-		if !strings.Contains(err.Error(), "not found") {
-			return err
-		}
-		fmt.Print("ℹ️   KubeArmor Policy Manager Service not found ...\n")
-	}
-
-	fmt.Print("❌   KubeArmor Policy Manager Deployment ...\n")
-	if err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Delete(context.Background(), policyManagerDeploymentName, metav1.DeleteOptions{}); err != nil {
-		if !strings.Contains(err.Error(), "not found") {
-			return err
-		}
-		fmt.Print("ℹ️   KubeArmor Policy Manager Deployment not found ...\n")
-	}
-
-	fmt.Print("❌   KubeArmor Host Policy Manager Service ...\n")
-	if err := c.K8sClientset.CoreV1().Services(o.Namespace).Delete(context.Background(), hostPolicyManagerServiceName, metav1.DeleteOptions{}); err != nil {
-		if !strings.Contains(err.Error(), "not found") {
-			return err
-		}
-		fmt.Print("ℹ️   KubeArmor Host Policy Manager Service not found ...\n")
-	}
-
-	fmt.Print("❌   KubeArmor Host Policy Manager Deployment ...\n")
-	if err := c.K8sClientset.AppsV1().Deployments(o.Namespace).Delete(context.Background(), hostPolicyManagerDeploymentName, metav1.DeleteOptions{}); err != nil {
-		if !strings.Contains(err.Error(), "not found") {
-			return err
-		}
-		fmt.Print("ℹ️   KubeArmor Host Policy Manager Deployment not found ...\n")
 	}
 
 	fmt.Print("❌   KubeArmor ConfigMap ...\n")
@@ -662,80 +798,6 @@ func K8sUninstaller(c *k8s.Client, o Options) error {
 		checkTerminatingPods(c)
 	}
 	return nil
-}
-
-// AutoDetectEnvironment detect the environment for a given k8s context
-func AutoDetectEnvironment(c *k8s.Client) (name string) {
-	env := "none"
-
-	contextName := c.RawConfig.CurrentContext
-	clusterContext, exists := c.RawConfig.Contexts[contextName]
-	if !exists {
-		return env
-	}
-
-	clusterName := clusterContext.Cluster
-	cluster := c.RawConfig.Clusters[clusterName]
-	nodes, _ := c.K8sClientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-	if len(nodes.Items) <= 0 {
-		return env
-	}
-	containerRuntime := nodes.Items[0].Status.NodeInfo.ContainerRuntimeVersion
-	nodeImage := nodes.Items[0].Status.NodeInfo.OSImage
-
-	// Detecting Environment based on cluster name and context or OSImage
-	if clusterName == "minikube" || contextName == "minikube" {
-		env = "minikube"
-		return env
-	}
-
-	if strings.HasPrefix(clusterName, "microk8s-") || contextName == "microk8s" {
-		env = "microk8s"
-		return env
-	}
-
-	if strings.HasPrefix(clusterName, "gke_") {
-		env = "gke"
-		return env
-	}
-
-	if strings.Contains(nodeImage, "Bottlerocket") {
-		env = "bottlerocket"
-		return env
-	}
-
-	if strings.HasSuffix(clusterName, ".eksctl.io") || strings.HasSuffix(cluster.Server, "eks.amazonaws.com") {
-		env = "eks"
-		return env
-	}
-
-	// Environment is Self Managed K8s, checking container runtime and it's version
-
-	if strings.Contains(containerRuntime, "k3s") {
-		env = "k3s"
-		return env
-	}
-
-	s := strings.Split(containerRuntime, "://")
-	runtime := s[0]
-	version := "v" + s[1]
-
-	if runtime == "docker" && semver.Compare(version, "v18.9") >= 0 {
-		env = "docker"
-		return env
-	}
-
-	if runtime == "cri-o" {
-		env = "oke"
-		return env
-	}
-
-	if (runtime == "docker" && semver.Compare(version, "v19.3") >= 0) || runtime == "containerd" {
-		env = "generic"
-		return env
-	}
-
-	return env
 }
 
 func writeToYAML(f *os.File, o interface{}) error {

@@ -7,6 +7,7 @@ package probe
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -24,7 +25,7 @@ import (
 	"github.com/fatih/color"
 	jsoniter "github.com/json-iterator/go"
 	tp "github.com/kubearmor/KubeArmor/KubeArmor/types"
-	"github.com/olekukonko/tablewriter"
+
 	"golang.org/x/exp/slices"
 	"golang.org/x/mod/semver"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +35,6 @@ import (
 
 	"errors"
 
-	"github.com/accuknox/accuknox-cli/install"
 	"golang.org/x/sys/unix"
 )
 
@@ -43,13 +43,7 @@ var boldWhite = white.Add(color.Bold)
 var green = color.New(color.FgGreen).SprintFunc()
 var itwhite = color.New(color.Italic).Add(color.Italic).SprintFunc()
 
-// Options provides probe daemonset options install
-type Options struct {
-	Namespace string
-	Full      bool
-}
-
-// K8sInstaller for accuknox-cli install
+// K8sInstaller for karmor install
 func probeDaemonInstaller(c *k8s.Client, o Options, krnhdr bool) error {
 	daemonset := deployment.GenerateDaemonSet(o.Namespace, krnhdr)
 	if _, err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Create(context.Background(), daemonset, metav1.CreateOptions{}); err != nil {
@@ -62,20 +56,20 @@ func probeDaemonInstaller(c *k8s.Client, o Options, krnhdr bool) error {
 }
 
 func probeDaemonUninstaller(c *k8s.Client, o Options) error {
-	if err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Delete(context.Background(), deployment.Acliprobe, metav1.DeleteOptions{}); err != nil {
+	if err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Delete(context.Background(), deployment.Karmorprobe, metav1.DeleteOptions{}); err != nil {
 		if !strings.Contains(err.Error(), "not found") {
 			return err
 		}
-		fmt.Print("accuknox-cli probe DaemonSet not found ...\n")
+		fmt.Print("Karmor probe DaemonSet not found ...\n")
 	}
 
 	return nil
 }
 
-// PrintProbeResult prints the result for the  host and k8s probing accuknox-cli does to check compatibility with KubeArmor
+// PrintProbeResult prints the result for the  host and k8s probing kArmor does to check compatibility with KubeArmor
 func PrintProbeResult(c *k8s.Client, o Options) error {
 	if runtime.GOOS != "linux" {
-		env := install.AutoDetectEnvironment(c)
+		env := k8s.AutoDetectEnvironment(c)
 		if env == "none" {
 			return errors.New("unsupported environment or cluster not configured correctly")
 		}
@@ -87,17 +81,41 @@ func PrintProbeResult(c *k8s.Client, o Options) error {
 		}
 		return nil
 	}
-	if isKubeArmorRunning(c, o) {
-		getKubeArmorDeployments(c, o)
-		getKubeArmorContainers(c, o)
-		err := probeRunningKubeArmorNodes(c, o)
+	isRunning, daemonsetStatus := isKubeArmorRunning(c, o)
+	if isRunning {
+		deploymentData := getKubeArmorDeployments(c, o)
+		containerData := getKubeArmorContainers(c, o)
+		probeData, nodeData, err := ProbeRunningKubeArmorNodes(c, o)
 		if err != nil {
 			log.Println("error occured when probing kubearmor nodes", err)
 		}
-		err = getAnnotatedPods(c)
+		postureData := getPostureData(probeData)
+		armoredPodData, podData, err := getAnnotatedPods(c, o, postureData)
 		if err != nil {
 			log.Println("error occured when getting annotated pods", err)
 		}
+		if o.Output == "json" {
+			ProbeData := map[string]interface{}{"Probe Data": map[string]interface{}{
+				"DaemonsetStatus": daemonsetStatus,
+				"Deployments":     deploymentData,
+				"Containers":      containerData,
+				"Nodes":           nodeData,
+				"ArmoredPods":     armoredPodData,
+			},
+			}
+			out, err := json.Marshal(ProbeData)
+			if err != nil {
+				return err
+			}
+			fmt.Println(string(out))
+		} else {
+			printDaemonsetData(daemonsetStatus)
+			printKubearmorDeployments(deploymentData)
+			printKubeArmorContainers(containerData)
+			printKubeArmorprobe(probeData)
+			printAnnotatedPods(podData)
+		}
+
 		return nil
 	}
 
@@ -117,14 +135,14 @@ func PrintProbeResult(c *k8s.Client, o Options) error {
 			select {
 			case <-timeout:
 				color.Red("Failed to deploy probe daemonset ...")
-				color.Yellow("Cleaning Up accuknox-cli Probe DaemonSet ...\n")
+				color.Yellow("Cleaning Up Karmor Probe DaemonSet ...\n")
 				if err := probeDaemonUninstaller(c, o); err != nil {
 					return err
 				}
 				return nil
 			default:
 				time.Sleep(500 * time.Millisecond)
-				pods, _ := c.K8sClientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: "kubearmor-app=" + deployment.Acliprobe, FieldSelector: "status.phase!=Running"})
+				pods, _ := c.K8sClientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{LabelSelector: "kubearmor-app=" + deployment.Karmorprobe, FieldSelector: "status.phase!=Running"})
 				if len(pods.Items) == 0 {
 					break checkprobe
 				}
@@ -146,7 +164,7 @@ func PrintProbeResult(c *k8s.Client, o Options) error {
 			}
 		}
 		probeNode(c, o)
-		color.Yellow("\nDeleting accuknox-cli Probe DaemonSet ...\n")
+		color.Yellow("\nDeleting Karmor Probe DaemonSet ...\n")
 		if err := probeDaemonUninstaller(c, o); err != nil {
 			return err
 		}
@@ -226,7 +244,7 @@ func checkKernelHeaderPresent() bool {
 	return false
 }
 
-func execIntoPod(c *k8s.Client, podname, namespace, containername string, cmd string) (string, error) {
+func execIntoPod(c *k8s.Client, podname, namespace, cmd string) (string, error) {
 	buf := &bytes.Buffer{}
 	errBuf := &bytes.Buffer{}
 	request := c.K8sClientset.CoreV1().RESTClient().
@@ -243,7 +261,10 @@ func execIntoPod(c *k8s.Client, podname, namespace, containername string, cmd st
 			TTY:     true,
 		}, scheme.ParameterCodec)
 	exec, err := remotecommand.NewSPDYExecutor(c.Config, "POST", request.URL())
-	err = exec.Stream(remotecommand.StreamOptions{
+	if err != nil {
+		return "none", err
+	}
+	err = exec.StreamWithContext(context.TODO(), remotecommand.StreamOptions{
 		Stdout: buf,
 		Stderr: errBuf,
 	})
@@ -255,8 +276,8 @@ func execIntoPod(c *k8s.Client, podname, namespace, containername string, cmd st
 	return buf.String(), nil
 }
 
-func findFileInDir(c *k8s.Client, podname, namespace, containername string, cmd string) bool {
-	s, err := execIntoPod(c, podname, namespace, containername, cmd)
+func findFileInDir(c *k8s.Client, podname, namespace, cmd string) bool {
+	s, err := execIntoPod(c, podname, namespace, cmd)
 	if err != nil {
 		return false
 	}
@@ -268,18 +289,18 @@ func findFileInDir(c *k8s.Client, podname, namespace, containername string, cmd 
 }
 
 // Check for BTF Information or Kernel Headers Availability
-func checkNodeKernelHeaderPresent(c *k8s.Client, o Options, nodeName string, kernelVersion string) bool {
+func checkNodeKernelHeaderPresent(c *k8s.Client, o Options, nodeName string) bool {
 	pods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: "kubearmor-app=" + deployment.Acliprobe,
+		LabelSelector: "kubearmor-app=" + deployment.Karmorprobe,
 		FieldSelector: "spec.nodeName=" + nodeName,
 	})
 	if err != nil {
 		return false
 	}
 
-	if findFileInDir(c, pods.Items[0].Name, o.Namespace, pods.Items[0].Spec.Containers[0].Name, "find /sys/kernel/btf/ -name vmlinux") ||
-		findFileInDir(c, pods.Items[0].Name, o.Namespace, pods.Items[0].Spec.Containers[0].Name, "find -L /usr/src -maxdepth 2 -path \"*$(uname -r)*\" -name \"Kconfig\"") ||
-		findFileInDir(c, pods.Items[0].Name, o.Namespace, pods.Items[0].Spec.Containers[0].Name, "find -L /lib/modules/ -maxdepth 3 -path \"*$(uname -r)*\" -name \"Kconfig\"") {
+	if findFileInDir(c, pods.Items[0].Name, o.Namespace, "find /sys/kernel/btf/ -name vmlinux") ||
+		findFileInDir(c, pods.Items[0].Name, o.Namespace, "find -L /usr/src -maxdepth 2 -path \"*$(uname -r)*\" -name \"Kconfig\"") ||
+		findFileInDir(c, pods.Items[0].Name, o.Namespace, "find -L /lib/modules/ -maxdepth 3 -path \"*$(uname -r)*\" -name \"Kconfig\"") {
 		return true
 	}
 
@@ -308,14 +329,14 @@ func checkHostAuditSupport() {
 func getNodeLsmSupport(c *k8s.Client, o Options, nodeName string) (string, error) {
 	srcPath := "/sys/kernel/security/lsm"
 	pods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: "kubearmor-app=accuknox-cli-probe",
+		LabelSelector: "kubearmor-app=karmor-probe",
 		FieldSelector: "spec.nodeName=" + nodeName,
 	})
 	if err != nil {
 		return "none", err
 	}
 
-	s, err := execIntoPod(c, pods.Items[0].Name, o.Namespace, pods.Items[0].Spec.Containers[0].Name, "cat "+srcPath)
+	s, err := execIntoPod(c, pods.Items[0].Name, o.Namespace, "cat "+srcPath)
 	if err != nil {
 		return "none", err
 	}
@@ -332,7 +353,7 @@ func probeNode(c *k8s.Client, o Options) {
 			}
 			fmt.Printf("\t Observability/Audit:")
 			kernelVersion := item.Status.NodeInfo.KernelVersion
-			check2 := checkNodeKernelHeaderPresent(c, o, item.Name, kernelVersion)
+			check2 := checkNodeKernelHeaderPresent(c, o, item.Name)
 			checkAuditSupport(kernelVersion, check2)
 			lsm, err := getNodeLsmSupport(c, o, item.Name)
 			if err != nil {
@@ -345,134 +366,119 @@ func probeNode(c *k8s.Client, o Options) {
 	}
 }
 
-// KubeArmorProbeData structure definition
-type KubeArmorProbeData struct {
-	OSImage                 string
-	KernelVersion           string
-	KubeletVersion          string
-	ContainerRuntime        string
-	ActiveLSM               string
-	KernelHeaderPresent     bool
-	HostSecurity            bool
-	ContainerSecurity       bool
-	ContainerDefaultPosture tp.DefaultPosture
-	HostDefaultPosture      tp.DefaultPosture
-	HostVisibility          string
-}
-
-func isKubeArmorRunning(c *k8s.Client, o Options) bool {
-	_, err := getKubeArmorDaemonset(c, o)
-	return err == nil
+func isKubeArmorRunning(c *k8s.Client, o Options) (bool, *Status) {
+	isRunning, DaemonsetStatus := getKubeArmorDaemonset(c, o)
+	return isRunning, DaemonsetStatus
 
 }
 
-func getKubeArmorDaemonset(c *k8s.Client, o Options) (bool, error) {
-	var data [][]string
+func getKubeArmorDaemonset(c *k8s.Client, o Options) (bool, *Status) {
+
 	// KubeArmor DaemonSet
 	w, err := c.K8sClientset.AppsV1().DaemonSets(o.Namespace).Get(context.Background(), "kubearmor", metav1.GetOptions{})
 	if err != nil {
-		return false, err
-	}
-	color.Green("\nFound KubeArmor running in Kubernetes\n\n")
-	_, err = boldWhite.Printf("Daemonset :\n")
-	if err != nil {
-		color.Red(" Error while printing")
+		log.Println("error when getting kubearmor daemonset", err)
+		return false, nil
 	}
 	desired, ready, available := w.Status.DesiredNumberScheduled, w.Status.NumberReady, w.Status.NumberAvailable
 	if desired != ready && desired != available {
-		data = append(data, []string{" ", "kubearmor ", "Desired: " + strconv.Itoa(int(desired)), "Ready: " + strconv.Itoa(int(ready)), "Available: " + strconv.Itoa(int(available))})
 		return false, nil
 	}
-	data = append(data, []string{" ", "kubearmor ", "Desired: " + strconv.Itoa(int(desired)), "Ready: " + strconv.Itoa(int(ready)), "Available: " + strconv.Itoa(int(available))})
-	renderOutputInTableWithNoBorders(data)
-	return true, nil
-}
-func getKubeArmorDeployments(c *k8s.Client, o Options) {
-	var data [][]string
-	_, err := boldWhite.Printf("Deployments : \n")
-	if err != nil {
-		color.Red(" Error while printing")
+
+	DaemonSetStatus := Status{
+		Desired:   strconv.Itoa(int(desired)),
+		Ready:     strconv.Itoa(int(ready)),
+		Available: strconv.Itoa(int(available)),
 	}
+	return true, &DaemonSetStatus
+
+}
+func getKubeArmorDeployments(c *k8s.Client, o Options) map[string]*Status {
+
 	kubearmorDeployments, err := c.K8sClientset.AppsV1().Deployments(o.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: "kubearmor-app",
 	})
-
 	if err != nil {
-		return
+		log.Println("error while getting kubearmor deployments", err)
+		return nil
 	}
 	if len(kubearmorDeployments.Items) > 0 {
+		DeploymentsData := make(map[string]*Status)
 		for _, kubearmorDeploymentItem := range kubearmorDeployments.Items {
 			desired, ready, available := kubearmorDeploymentItem.Status.UpdatedReplicas, kubearmorDeploymentItem.Status.ReadyReplicas, kubearmorDeploymentItem.Status.AvailableReplicas
-			if desired != ready && desired != available {
-				continue
-			} else {
-				data = append(data, []string{" ", kubearmorDeploymentItem.Name, "Desired: " + strconv.Itoa(int(desired)), "Ready: " + strconv.Itoa(int(ready)), "Available: " + strconv.Itoa(int(available))})
+			if desired == ready && desired == available {
+				DeploymentsData[kubearmorDeploymentItem.Name] = &Status{
+					Desired:   strconv.Itoa(int(desired)),
+					Ready:     strconv.Itoa(int(ready)),
+					Available: strconv.Itoa(int(available)),
+				}
 			}
 		}
-	}
-	renderOutputInTableWithNoBorders(data)
-}
 
-func getKubeArmorContainers(c *k8s.Client, o Options) {
-	var data [][]string
-	_, err := boldWhite.Printf("Containers : \n")
-	if err != nil {
-		color.Red(" Error while printing")
-	}
-	kubearmorPods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: "kubearmor-app",
-	})
-	if err != nil {
-		log.Println("error occured when getting kubearmor pods", err)
-		return
-	}
-
-	if len(kubearmorPods.Items) > 0 {
-		for _, kubearmorPodItem := range kubearmorPods.Items {
-			data = append(data, []string{" ", kubearmorPodItem.Name, "Running: " + strconv.Itoa(len(kubearmorPodItem.Spec.Containers)), "Image Version: " + kubearmorPodItem.Spec.Containers[0].Image})
-		}
-	}
-
-	renderOutputInTableWithNoBorders(data)
-
-}
-
-func probeRunningKubeArmorNodes(c *k8s.Client, o Options) error {
-
-	// // KubeArmor Nodes
-	nodes, err := c.K8sClientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		log.Println("error getting nodes", err)
-		return err
-	}
-
-	if len(nodes.Items) > 0 {
-
-		for i, item := range nodes.Items {
-			_, err := boldWhite.Printf("Node %d : \n", i+1)
-			if err != nil {
-				color.Red(" Error while printing")
-			}
-			err = readDataFromKubeArmor(c, o, item.Name)
-			if err != nil {
-				return err
-			}
-		}
-	} else {
-		fmt.Println("No kubernetes environment found")
+		return DeploymentsData
 	}
 	return nil
 }
 
-func readDataFromKubeArmor(c *k8s.Client, o Options, nodeName string) error {
-	srcPath := "/tmp/accuknox-cliProbeData.cfg"
+func getKubeArmorContainers(c *k8s.Client, o Options) map[string]*KubeArmorPodSpec {
+
+	kubearmorPods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: "kubearmor-app",
+	})
+
+	if err != nil {
+		log.Println("error occured when getting kubearmor pods", err)
+		return nil
+	}
+	KAContainerData := make(map[string]*KubeArmorPodSpec)
+	if len(kubearmorPods.Items) > 0 {
+		for _, kubearmorPodItem := range kubearmorPods.Items {
+
+			KAContainerData[kubearmorPodItem.Name] = &KubeArmorPodSpec{
+				Running:       strconv.Itoa(len(kubearmorPodItem.Spec.Containers)),
+				Image_Version: kubearmorPodItem.Spec.Containers[0].Image,
+			}
+		}
+
+		return KAContainerData
+	}
+	return nil
+}
+
+// ProbeRunningKubeArmorNodes extracts data from running KubeArmor daemonset  by executing into the container and reading /tmp/kubearmor.cfg
+func ProbeRunningKubeArmorNodes(c *k8s.Client, o Options) ([]KubeArmorProbeData, map[string]KubeArmorProbeData, error) {
+	// KubeArmor Nodes
+	nodes, err := c.K8sClientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return []KubeArmorProbeData{}, nil, fmt.Errorf("error occured when getting nodes %s", err.Error())
+	}
+
+	if len(nodes.Items) == 0 {
+		return []KubeArmorProbeData{}, nil, fmt.Errorf("no nodes found")
+	}
+	nodeData := make(map[string]KubeArmorProbeData)
+
+	var dataList []KubeArmorProbeData
+	for i, item := range nodes.Items {
+		data, err := readDataFromKubeArmor(c, o, item.Name)
+		if err != nil {
+			return []KubeArmorProbeData{}, nil, err
+		}
+		dataList = append(dataList, data)
+		nodeData["Node"+strconv.Itoa(i+1)] = data
+	}
+
+	return dataList, nodeData, nil
+}
+
+func readDataFromKubeArmor(c *k8s.Client, o Options, nodeName string) (KubeArmorProbeData, error) {
+	srcPath := "/tmp/karmorProbeData.cfg"
 	pods, err := c.K8sClientset.CoreV1().Pods(o.Namespace).List(context.Background(), metav1.ListOptions{
 		LabelSelector: "kubearmor-app=kubearmor",
 		FieldSelector: "spec.nodeName=" + nodeName,
 	})
-	if err != nil {
-		log.Println("error occured while getting kubeArmor pods", err)
-		return err
+	if err != nil || pods == nil || len(pods.Items) == 0 {
+		return KubeArmorProbeData{}, fmt.Errorf("error occured while getting KubeArmor pods %s", err.Error())
 	}
 	reader, outStream := io.Pipe()
 	cmdArr := []string{"cat", srcPath}
@@ -485,59 +491,43 @@ func readDataFromKubeArmor(c *k8s.Client, o Options, nodeName string) error {
 		VersionedParams(&corev1.PodExecOptions{
 			Container: pods.Items[0].Spec.Containers[0].Name,
 			Command:   cmdArr,
-			Stdin:     true,
+			Stdin:     false,
 			Stdout:    true,
-			Stderr:    true,
+			Stderr:    false,
 			TTY:       false,
 		}, scheme.ParameterCodec)
 	exec, err := remotecommand.NewSPDYExecutor(c.Config, "POST", req.URL())
-
 	if err != nil {
-		return err
+		return KubeArmorProbeData{}, err
 	}
 	go func() {
 		defer outStream.Close()
-		err = exec.Stream(remotecommand.StreamOptions{
-			Stdin:  os.Stdin,
+		err = exec.StreamWithContext(context.TODO(), remotecommand.StreamOptions{
 			Stdout: outStream,
-			Stderr: os.Stderr,
 			Tty:    false,
 		})
 	}()
 	buf, err := io.ReadAll(reader)
 	if err != nil {
-		log.Println("an error occured when reading file", err)
-		return err
+		return KubeArmorProbeData{}, fmt.Errorf("error occured while reading data from kubeArmor pod %s", err.Error())
 	}
-	err = printKubeArmorProbeOutput(buf)
-	if err != nil {
-		log.Println("an error occured when printing output", err)
-		return err
-	}
-	return nil
-}
-
-func printKubeArmorProbeOutput(buf []byte) error {
-	var kd *KubeArmorProbeData
+	var kd KubeArmorProbeData
 	var json = jsoniter.ConfigCompatibleWithStandardLibrary
-	var data [][]string
-	err := json.Unmarshal(buf, &kd)
+	err = json.Unmarshal(buf, &kd)
 	if err != nil {
-		log.Println("an error occured when parsing file", err)
-		return err
+		return KubeArmorProbeData{}, fmt.Errorf("error occured while parsing data from kubeArmor pod %s", err.Error())
 	}
-	data = append(data, []string{" ", "OS Image:", green(kd.OSImage)})
-	data = append(data, []string{" ", "Kernel Version:", green(kd.KernelVersion)})
-	data = append(data, []string{" ", "Kubelet Version:", green(kd.KubeletVersion)})
-	data = append(data, []string{" ", "Container Runtime:", green(kd.ContainerRuntime)})
-	data = append(data, []string{" ", "Active LSM:", green(kd.ActiveLSM)})
-	data = append(data, []string{" ", "Host Security:", green(strconv.FormatBool(kd.HostSecurity))})
-	data = append(data, []string{" ", "Container Security:", green(strconv.FormatBool(kd.ContainerSecurity))})
-	data = append(data, []string{" ", "Container Default Posture:", green(kd.ContainerDefaultPosture.FileAction) + itwhite("(File)"), green(kd.ContainerDefaultPosture.FileAction) + itwhite("(Capabilities)"), green(kd.ContainerDefaultPosture.NetworkAction) + itwhite("(Network)")})
-	data = append(data, []string{" ", "Host Default Posture:", green(kd.HostDefaultPosture.FileAction) + itwhite("(File)"), green(kd.HostDefaultPosture.CapabilitiesAction) + itwhite("(Capabilities)"), green(kd.HostDefaultPosture.NetworkAction) + itwhite("(Network)")})
-	data = append(data, []string{" ", "Host Visibility:", green(kd.HostVisibility)})
-	renderOutputInTableWithNoBorders(data)
-	return nil
+	return kd, nil
+}
+func getPostureData(probeData []KubeArmorProbeData) map[string]string {
+	postureData := make(map[string]string)
+	if len(probeData) > 0 {
+		postureData["filePosture"] = probeData[0].ContainerDefaultPosture.FileAction
+		postureData["capabilitiesPosture"] = probeData[0].ContainerDefaultPosture.CapabilitiesAction
+		postureData["networkPosture"] = probeData[0].ContainerDefaultPosture.NetworkAction
+	}
+
+	return postureData
 }
 
 // sudo systemctl status kubearmor
@@ -552,7 +542,7 @@ func isSystemdMode() bool {
 }
 
 func probeSystemdMode() error {
-	jsonFile, err := os.Open("/tmp/accuknox-cliProbeData.cfg")
+	jsonFile, err := os.Open("/tmp/karmorProbeData.cfg")
 	if err != nil {
 		log.Println(err)
 		return err
@@ -567,11 +557,13 @@ func probeSystemdMode() error {
 	if err != nil {
 		color.Red(" Error")
 	}
-	err = printKubeArmorProbeOutput(buf)
+	var kd KubeArmorProbeData
+	var json = jsoniter.ConfigCompatibleWithStandardLibrary
+	err = json.Unmarshal(buf, &kd)
 	if err != nil {
-		log.Println("an error occured when printing output", err)
 		return err
 	}
+	printKubeArmorProbeOutput(kd)
 	return nil
 }
 
@@ -584,12 +576,61 @@ func getAnnotatedPodLabels(m map[string]string) mapset.Set[string] {
 	return b
 }
 
-func getAnnotatedPods(c *k8s.Client) error {
+func getNsSecurityPostureAndVisibility(c *k8s.Client, postureData map[string]string) (map[string]*NamespaceData, error) {
+	// Namespace/host security posture and visibility setting
+
+	mp := make(map[string]*NamespaceData)
+	namespaces, err := c.K8sClientset.CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
+
+	if err != nil {
+		return mp, err
+	}
+	for _, ns := range namespaces.Items {
+
+		filePosture := postureData["filePosture"]
+		capabilityPosture := postureData["capabilitiesPosture"]
+		networkPosture := postureData["networkPosture"]
+
+		if len(ns.Annotations["kubearmor-file-posture"]) > 0 {
+			filePosture = ns.Annotations["kubearmor-file-posture"]
+		}
+
+		if len(ns.Annotations["kubearmor-capabilities-posture"]) > 0 {
+			capabilityPosture = ns.Annotations["kubearmor-capabilities-posture"]
+		}
+
+		if len(ns.Annotations["kubearmor-network-posture"]) > 0 {
+			networkPosture = ns.Annotations["kubearmor-network-posture"]
+		}
+
+		mp[ns.Name] = &NamespaceData{
+			NsDefaultPosture:   tp.DefaultPosture{FileAction: filePosture, CapabilitiesAction: capabilityPosture, NetworkAction: networkPosture},
+			NsVisibilityString: ns.Annotations["kubearmor-visibility"],
+			NsVisibility: Visibility{
+				Process:      strings.Contains(ns.Annotations["kubearmor-visibility"], "process"),
+				File:         strings.Contains(ns.Annotations["kubearmor-visibility"], "file"),
+				Network:      strings.Contains(ns.Annotations["kubearmor-visibility"], "network"),
+				Capabilities: strings.Contains(ns.Annotations["kubearmor-visibility"], "capabilities"),
+			},
+			NsPostureString: "File(" + filePosture + "), Capabilities(" + capabilityPosture + "), Network (" + networkPosture + ")",
+		}
+	}
+	return mp, err
+}
+
+func getAnnotatedPods(c *k8s.Client, o Options, postureData map[string]string) (map[string]interface{}, [][]string, error) {
+
 	// Annotated Pods Description
 	var data [][]string
 	pods, err := c.K8sClientset.CoreV1().Pods("").List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return err
+		return nil, [][]string{}, err
+	}
+
+	armoredPodData := make(map[string]*NamespaceData)
+	mp, err := getNsSecurityPostureAndVisibility(c, postureData)
+	if err != nil {
+		return nil, [][]string{}, err
 	}
 
 	policyMap, err := getPoliciesOnAnnotatedPods(c)
@@ -598,45 +639,44 @@ func getAnnotatedPods(c *k8s.Client) error {
 	}
 
 	for _, p := range pods.Items {
+
 		if p.Annotations["kubearmor-policy"] == "enabled" {
 			armoredPod, err := c.K8sClientset.CoreV1().Pods(p.Namespace).Get(context.Background(), p.Name, metav1.GetOptions{})
 			if err != nil {
-				return err
+				return nil, [][]string{}, err
 			}
-			data = append(data, []string{armoredPod.Namespace, armoredPod.Name, ""})
+			data = append(data, []string{armoredPod.Namespace, mp[armoredPod.Namespace].NsPostureString, mp[armoredPod.Namespace].NsVisibilityString, armoredPod.Name, ""})
 			labels := getAnnotatedPodLabels(armoredPod.Labels)
+
 			for policyKey, policyValue := range policyMap {
 				s2 := sliceToSet(policyValue)
 				if s2.IsSubset(labels) {
-					if checkIfDataAlreadyContainsPodName(data, armoredPod.Name, policyKey) {
-						continue
-					} else {
-						data = append(data, []string{armoredPod.Namespace, armoredPod.Name, policyKey})
+					if !checkIfDataAlreadyContainsPodName(data, armoredPod.Name, policyKey) {
+
+						data = append(data, []string{armoredPod.Namespace, mp[armoredPod.Namespace].NsPostureString, mp[armoredPod.Namespace].NsVisibilityString, armoredPod.Name, policyKey})
+
 					}
 				}
 			}
 		}
 	}
-	_, err = boldWhite.Printf("Armored Up pods : \n")
-	if err != nil {
-		color.Red(" Error printing bold text")
-	}
-
 	// sorting according to namespaces, for merging of cells with same namespaces
 	sort.SliceStable(data, func(i, j int) bool {
 		return data[i][0] < data[j][0]
 	})
 
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"NAMESPACE", "NAME", "POLICY"})
-
 	for _, v := range data {
-		table.Append(v)
+
+		if _, exists := armoredPodData[v[0]]; !exists {
+			armoredPodData[v[0]] = &NamespaceData{
+				NsDefaultPosture: mp[v[0]].NsDefaultPosture,
+				NsVisibility:     mp[v[0]].NsVisibility,
+			}
+		}
+		armoredPodData[v[0]].NsPodList = append(armoredPodData[v[0]].NsPodList, PodInfo{PodName: v[3], Policy: v[4]})
 	}
-	table.SetRowLine(true)
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
-	table.Render()
-	return nil
+
+	return map[string]interface{}{"Namespaces": armoredPodData}, data, nil
 }
 
 func getPoliciesOnAnnotatedPods(c *k8s.Client) (map[string][]string, error) {
@@ -656,32 +696,14 @@ func getPoliciesOnAnnotatedPods(c *k8s.Client) (map[string][]string, error) {
 	}
 	return maps, nil
 }
-
-func renderOutputInTableWithNoBorders(data [][]string) {
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetAutoWrapText(false)
-	table.SetAutoFormatHeaders(true)
-	table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
-	table.SetAlignment(tablewriter.ALIGN_LEFT)
-	table.SetCenterSeparator("")
-	table.SetColumnSeparator("")
-	table.SetRowSeparator("")
-	table.SetHeaderLine(false)
-	table.SetBorder(false)
-	table.SetTablePadding("\t") // pad with tabs
-	table.SetNoWhiteSpace(true)
-	table.AppendBulk(data) // Add Bulk Data
-	table.Render()
-}
-
 func checkIfDataAlreadyContainsPodName(input [][]string, name string, policy string) bool {
 	for _, slice := range input {
 		//if slice contains podname, then append the policy to the existing policies
 		if slices.Contains(slice, name) {
-			if slice[2] == "" {
-				slice[2] = policy
+			if slice[4] == "" {
+				slice[4] = policy
 			} else {
-				slice[2] = slice[2] + "\n" + policy
+				slice[4] = slice[4] + "\n" + policy
 			}
 			return true
 		}
