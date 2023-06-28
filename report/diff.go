@@ -30,7 +30,7 @@ func getTableOutput(diffReport *rpb.ReportResponse) {
 						EgressConnection:  rsdv.GetSummaryData().GetEgressConnection(),
 						BindConnection:    rsdv.GetSummaryData().GetBindConnection(),
 					}
-					DisplayReportOutput(resp, true, rsdv.GetResourceType(), rsdv.GetResourceName())
+					DisplayReportOutput(resp, false, rsdv.GetResourceType(), rsdv.GetResourceName())
 					//if len(rsdv.GetSummaryData().GetProcessData()) > 0 {
 					//	summary.DisplaySummaryOutput(resp, false, "process")
 					//	tableprinter.Print(os.Stdout, rsdv.GetSummaryData().GetProcessData())
@@ -240,6 +240,15 @@ func getDiff(baselineReport, report *rpb.ReportResponse, ignorePath []string) er
 
 	// TODO: Definitely needs to change this, very bad code and not want to be in this format
 	getTableOutput(diffReport)
+	// Write in a temp file
+	tempF, err = os.CreateTemp("/tmp/", "diff-report-*.md")
+	if err != nil {
+		return err
+	}
+
+	if _, err := tempF.Write([]byte(diffReportMD)); err != nil {
+		return err
+	}
 	return nil
 }
 

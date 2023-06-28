@@ -50,6 +50,7 @@ require (
 	github.com/evertras/bubble-table v0.15.2
 	github.com/google/go-cmp v0.5.9
 	github.com/google/go-github v17.0.0+incompatible
+	github.com/jedib0t/go-pretty v4.3.0+incompatible
 	github.com/kubearmor/KVMService/src/types v0.0.0-20220714130113-b0eba8c9ff34
 	github.com/kubearmor/KubeArmor/KubeArmor v0.0.0-20230519075515-e8b45043a53d
 	github.com/kubearmor/KubeArmor/deployments v0.0.0-20230510133055-4e30a28b6352
