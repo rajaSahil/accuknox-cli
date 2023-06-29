@@ -31,6 +31,7 @@ func DisplayReportOutput(resp *opb.Response, revDNSLookup bool, resourceType, re
 
 	writeResourceInfoToTable(resourceType, resourceName, resp.Namespace, resp.ClusterName, resp.ContainerName, resp.Label)
 	diffReportMD += "-------\n"
+	text.DisableColors()
 
 	writeClusterInfoToMdVar(resourceType, resourceName, resp.Namespace, resp.ClusterName, resp.ContainerName, resp.Label)
 
@@ -248,6 +249,7 @@ var diffReportMD string
 
 func tableOuput(header []string, data [][]string, title string) {
 	tr := table.NewWriter()
+
 	var row table.Row
 	for _, d := range header {
 		row = append(row, d)
