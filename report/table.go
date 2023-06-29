@@ -6,7 +6,6 @@ import (
 	opb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/observability"
 	"github.com/jedib0t/go-pretty/table"
 	"github.com/jedib0t/go-pretty/text"
-	"github.com/mgutz/ansi"
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"sort"
@@ -36,9 +35,9 @@ func DisplayReportOutput(resp *opb.Response, revDNSLookup bool, resourceType, re
 	writeClusterInfoToMdVar(resourceType, resourceName, resp.Namespace, resp.ClusterName, resp.ContainerName, resp.Label)
 
 	// Colored Status for Allow and Deny
-	agc := ansi.ColorFunc("green")
-	arc := ansi.ColorFunc("red")
-	ayc := ansi.ColorFunc("yellow")
+	//agc := ansi.ColorFunc("green")
+	//arc := ansi.ColorFunc("red")
+	//ayc := ansi.ColorFunc("yellow")
 
 	if len(resp.ProcessData) > 0 || len(resp.FileData) > 0 {
 		diffReportMD += "## System access behavior Summary \n "
@@ -53,11 +52,11 @@ func DisplayReportOutput(resp *opb.Response, revDNSLookup bool, resourceType, re
 				procStrSlice = append(procStrSlice, procData.Source)
 				procStrSlice = append(procStrSlice, procData.Destination)
 				if procData.Status == "Allow" {
-					procStrSlice = append(procStrSlice, agc(procData.Status))
+					procStrSlice = append(procStrSlice, text.FgGreen.Sprintf("%s", procData.Status))
 				} else if procData.Status == "Audit" {
-					procStrSlice = append(procStrSlice, ayc(procData.Status))
+					procStrSlice = append(procStrSlice, text.FgYellow.Sprintf("%s", procData.Status))
 				} else {
-					procStrSlice = append(procStrSlice, arc(procData.Status))
+					procStrSlice = append(procStrSlice, text.FgRed.Sprintf("%s", procData.Status))
 				}
 				procRowData = append(procRowData, procStrSlice)
 			}
@@ -85,11 +84,11 @@ func DisplayReportOutput(resp *opb.Response, revDNSLookup bool, resourceType, re
 				fileStrSlice = append(fileStrSlice, fileData.Source)
 				fileStrSlice = append(fileStrSlice, fileData.Destination)
 				if fileData.Status == "Allow" {
-					fileStrSlice = append(fileStrSlice, agc(fileData.Status))
+					fileStrSlice = append(fileStrSlice, text.FgGreen.Sprintf("%s", fileData.Status))
 				} else if fileData.Status == "Audit" {
-					fileStrSlice = append(fileStrSlice, ayc(fileData.Status))
+					fileStrSlice = append(fileStrSlice, text.FgYellow.Sprintf("%s", fileData.Status))
 				} else {
-					fileStrSlice = append(fileStrSlice, arc(fileData.Status))
+					fileStrSlice = append(fileStrSlice, text.FgRed.Sprintf("%s", fileData.Status))
 				}
 				fileRowData = append(fileRowData, fileStrSlice)
 			}
@@ -194,8 +193,12 @@ func writeClusterInfoToMdVar(resourceType, resourceName, namespace, clustername,
 	var s string
 	s += "\n**Cluster Name** " + "\t\t" + "`" + clustername + "`"
 	s += "\n**Namespace Name** " + "\t\t" + "`" + namespace + "`"
-	s += "\n**Resource Type**" + "\t\t" + "`" + resourceType + "`"
-	s += "\n**Resource Name**" + "\t\t" + "`" + resourceName + "`"
+	if resourceType != "" {
+		s += "\n**Resource Type**" + "\t\t" + "`" + resourceType + "`"
+	}
+	if resourceName != "" {
+		s += "\n**Resource Name**" + "\t\t" + "`" + resourceName + "`"
+	}
 	s += "\n**Container Name**" + "\t\t" + "`" + containername + "`"
 	s += "\n**Labels**" + "\t\t" + "`" + labels + "`"
 	s += "\n"
