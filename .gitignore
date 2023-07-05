@@ -5,7 +5,6 @@
 *.so
 *.dylib
 kubearmor*
-accuknox-cli
 out/
 .vscode
 .idea
