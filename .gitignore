@@ -9,6 +9,7 @@ accuknox-cli
 out/
 .vscode
 .idea
+Dockerfile
 # Test binary, built with `go test -c`
 *.test
 

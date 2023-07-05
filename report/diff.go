@@ -18,14 +18,14 @@ func getTableOutput(diffReport *rpb.ReportResponse) {
 				for rsdk, rsdv := range rtv.Resources {
 
 					resp := &opb.Response{
-						DeploymentName:    rsdk,
-						PodName:           "",
-						ClusterName:       ck,
-						Namespace:         nk,
-						Label:             rsdv.GetMetaData().Label,
-						ContainerName:     rsdv.GetMetaData().ContainerName,
-						ProcessData:       rsdv.GetSummaryData().GetProcessData(),
-						FileData:          rsdv.GetSummaryData().GetFileData(),
+						DeploymentName: rsdk,
+						PodName:        "",
+						ClusterName:    ck,
+						Namespace:      nk,
+						Label:          rsdv.GetMetaData().Label,
+						ContainerName:  rsdv.GetMetaData().ContainerName,
+						ProcessData:    rsdv.GetSummaryData().GetProcessData(),
+						//FileData:          rsdv.GetSummaryData().GetFileData(),
 						IngressConnection: rsdv.GetSummaryData().GetIngressConnection(),
 						EgressConnection:  rsdv.GetSummaryData().GetEgressConnection(),
 						BindConnection:    rsdv.GetSummaryData().GetBindConnection(),
