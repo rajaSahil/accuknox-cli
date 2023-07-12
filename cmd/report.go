@@ -28,7 +28,7 @@ func init() {
 	reportCmd.Flags().StringSliceVarP(&reportOptions.ResourceType, "resource-types", "r", []string{}, "Resource types")
 	reportCmd.Flags().StringSliceVarP(&reportOptions.ResourceName, "resource-names", "w", []string{}, "Resource names")
 	reportCmd.Flags().StringVarP(&reportOptions.Labels, "labels", "l", "", "Labels")
-	reportCmd.Flags().StringVar(&reportOptions.ContainerName, "container", "c", "Container name")
+	reportCmd.Flags().StringVar(&reportOptions.ContainerName, "container", "", "Container name")
 	reportCmd.Flags().StringSliceVarP(&reportOptions.Source, "source", "s", []string{}, "Source path")
 	reportCmd.Flags().StringSliceVarP(&reportOptions.Destination, "destination", "d", []string{}, "Destination path")
 	reportCmd.Flags().StringVarP(&reportOptions.Operation, "operation", "t", "", "Operation type")
