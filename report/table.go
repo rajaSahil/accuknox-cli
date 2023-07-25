@@ -229,8 +229,8 @@ func writeResourceInfoToTable(resourceType, resourceName, namespace, clustername
 		{"Namespace Name", namespace},
 		{"Resource Type", resourceType},
 		{"Resource Name", resourceName},
-		{"Container Name", containername},
-		{"Labels", labels},
+		//{"Container Name", containername},
+		//{"Labels", labels},
 	}
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetBorder(false)
