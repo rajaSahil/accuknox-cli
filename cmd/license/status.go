@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/accuknox/accuknox-cli/utils"
 	"os"
 	"strconv"
 
 	"github.com/accuknox/accuknox-cli/k8s"
-	"github.com/accuknox/accuknox-cli/utils"
 	pb "github.com/accuknox/auto-policy-discovery/src/protobuf/v1/license"
 	"github.com/spf13/cobra"
 	"google.golang.org/grpc"

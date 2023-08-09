@@ -3,12 +3,12 @@ package recommend
 import (
 	"context"
 	"errors"
+	"github.com/accuknox/accuknox-cli/utils"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/accuknox/accuknox-cli/k8s"
-	"github.com/accuknox/accuknox-cli/utils"
 	"github.com/accuknox/auto-policy-discovery/src/libs"
 	"github.com/accuknox/auto-policy-discovery/src/protobuf/v1/worker"
 	"github.com/clarketm/json"

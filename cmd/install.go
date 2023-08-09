@@ -42,7 +42,7 @@ var installCmd = &cobra.Command{
 		}
 
 		command := "kubectl"
-		arg := []string{"apply", "-f", "https://raw.githubusercontent.com/accuknox/discovery-engine/dev/deployments/k8s/deployment.yaml"}
+		arg := []string{"apply", "-f", "https://raw.githubusercontent.com/accuknox/discovery-engine/feature-report/deployments/k8s/deployment.yaml"}
 
 		newCmd := exec.Command(command, arg...)
 
