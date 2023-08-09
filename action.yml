@@ -1,0 +1,31 @@
+name: generate-report
+description: generate report using kubearmor and discovery engine
+
+inputs:
+  user:
+    description: 'user id'
+    required: true
+  key:
+    description: 'license key'
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: accuknox-cli-setup
+      run: |
+        git clone https://github.com/accuknox/accuknox-cli.git
+        cd accuknox-cli
+        make install
+      shell: bash
+        
+      
+    - name: accuknox-install
+      run: |
+        accuknox-cli install --key ${{ inputs.key }} --user ${{ inputs.user }}
+      shell: bash
+    
+    - name: accuknox-report
+      run: |
+        accuknox-cli report
+      shell: bash
